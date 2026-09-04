@@ -17,7 +17,7 @@ manifest_digest = "7AFB66695545775FBFBB2D3078ADFD084244D5002392E837FDE21D9EA1C6D
 deps = { MoveStdlib = "MoveStdlib" }
 
 [pinned.testnet.access_gate]
-source = { local = "../access-gate-sui" }
+source = { git = "https://github.com/meddleware-org/access-gate-sui.git", subdir = ".", rev = "0296d036d6a93dab1a3b39bc878e240c17e44714" }
 use_environment = "testnet"
 manifest_digest = "5745706258F61D6CE210904B3E6AE87A73CE9D31A6F93BE4718C442529332A87"
 deps = { std = "MoveStdlib", sui = "Sui" }
@@ -25,5 +25,5 @@ deps = { std = "MoveStdlib", sui = "Sui" }
 [pinned.testnet.seal_policies]
 source = { root = true }
 use_environment = "testnet"
-manifest_digest = "D6F95788136EDEC065A0B7E04125FFA1D8CB91B5C19A4195A78853A421BBFF57"
+manifest_digest = "D5586306553E342AA2CFAC0029316AC7886310466D093A8F807A65B1CFD680E0"
 deps = { access_gate = "access_gate", std = "MoveStdlib", sui = "Sui" }
