@@ -1,7 +1,7 @@
 [package]
 edition = "2024"
 name = "seal_policies"
-version = "0.0.1"
+version = "0.0.2"
 license = "0BSD"
 published-at = "0x9f0563bfe42fbd29932cd280cc47efe17f5339b4dc569eb110114665eecc231e"
 
@@ -14,7 +14,7 @@ published-at = "0x9f0563bfe42fbd29932cd280cc47efe17f5339b4dc569eb110114665eecc23
 # own `published-at` resolves `access_gate` to its on-chain address (0x0bedd…), so no address
 # override is needed here.
 [dependencies]
-access_gate = { git = "https://github.com/meddleware-org/access-gate-sui.git", rev = "v0.0.2" }
+access_gate = { git = "https://github.com/meddleware-org/access-gate-sui.git", rev = "v0.0.3" }
 
 [addresses]
 seal_policies = "0x9f0563bfe42fbd29932cd280cc47efe17f5339b4dc569eb110114665eecc231e"
