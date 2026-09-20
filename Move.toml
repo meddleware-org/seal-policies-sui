@@ -3,13 +3,15 @@ edition = "2024"
 name = "seal_policies"
 version = "0.0.1"
 license = "0BSD"
+published-at = "0x67520f808bd47014c813841d654e2863619628db598c5943cc67f463466088d3"
 
 # Depends on the access-gate primitive for the `nft_gate` policy. The Sui framework is an
 # implicit system dependency (as in access-gate-sui). access_gate is consumer-agnostic and
 # is NOT modified by this package — we only read its `Gate` / access-NFT verifiers.
 #
-# Depends on access_gate v0.0.1
+# Depends on access_gate v0.0.1 (published at 0x6925...)
 [dependencies]
 access_gate = { git = "https://github.com/meddleware-org/access-gate-sui.git", rev = "v0.0.1" }
 
 [addresses]
+access_gate = "0x692547ae051c44875d2a08ebdb35a0c234d3492511b5680c7bc5b9c9ba0d68bc"
