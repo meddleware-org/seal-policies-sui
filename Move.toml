@@ -1,7 +1,7 @@
 [package]
 edition = "2024"
 name = "seal_policies"
-version = "0.0.1"
+version = "0.0.3"
 license = "0BSD"
 published-at = "0x67520f808bd47014c813841d654e2863619628db598c5943cc67f463466088d3"
 
