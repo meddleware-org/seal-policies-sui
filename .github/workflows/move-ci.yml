@@ -1,4 +1,4 @@
-name: CI
+name: Move CI
 
 on:
   push:
