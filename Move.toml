@@ -9,9 +9,9 @@ published-at = "0x67520f808bd47014c813841d654e2863619628db598c5943cc67f463466088
 # implicit system dependency (as in access-gate-sui). access_gate is consumer-agnostic and
 # is NOT modified by this package — we only read its `Gate` / access-NFT verifiers.
 #
-# Depends on access_gate v0.0.1 (published at 0x6925...)
+# The dependency's own manifest defines the `access_gate` named address; do not redeclare it
+# here (Sui CLI >= 1.80 rejects a duplicate). Move.lock pins the revision that resolves it to
+# the canonical testnet access_gate 0x0bedd0…, which the published seal_policies links against.
 [dependencies]
 access_gate = { git = "https://github.com/meddleware-org/access-gate-sui.git", rev = "v0.0.1" }
 
-[addresses]
-access_gate = "0x692547ae051c44875d2a08ebdb35a0c234d3492511b5680c7bc5b9c9ba0d68bc"
