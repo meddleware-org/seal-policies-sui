@@ -3,9 +3,10 @@ edition = "2024"
 name = "seal_policies"
 version = "0.0.3"
 license = "0BSD"
-# No `published-at`: the live testnet package 0x9f0563bf…231e is recorded in Published.toml
-# (Sui >= 1.80). 0x67520f80…88d3 is a broken stray publish that bundles its own copy of the
-# access_gate module (linkage 0x1/0x2 only), so no real gate can be used with it (audit F8).
+# No `published-at`: the testnet package 0x42cc181f…d612 (linking access_gate 0x1a81ca17…eea4) is
+# recorded in Published.toml (Sui >= 1.80). Superseded: 0x9f0563bf…231e (linked access_gate
+# 0x0bedd0…). 0x67520f80…88d3 is a broken stray that bundles its own access_gate (UpgradeCap burned;
+# audit F8).
 
 # Depends on the access-gate primitive for the `nft_gate` policy. The Sui framework is an
 # implicit system dependency (as in access-gate-sui). access_gate is consumer-agnostic and
@@ -15,11 +16,10 @@ license = "0BSD"
 # here (Sui CLI >= 1.80 rejects a duplicate). The rev is pinned to an immutable COMMIT SHA (never a
 # mutable tag — `v0.0.1` has already been moved).
 #
-# 22fe6d7 is the access-gate source this package's `nft_gate` needs (GatePolicy /
-# `gate_pause_blocks_decryption`). It is NOT yet published: release order is (1) push + publish
-# access-gate-sui and record its Published.toml, (2) bump this rev to the commit that records that
-# publication, (3) rebuild (regenerates Move.lock) and publish this package. The live testnet
-# seal_policies 0x9f0563… was built from f191c2d (→ access_gate 0x0bedd0…).
+# dcd2d3c is the access-gate commit that records the testnet publication 0x1a81ca… (Published.toml)
+# this package was published against. Move.lock still pins the previous rev until that commit is on
+# GitHub: after pushing access-gate-sui, run `sui move build --build-env testnet` here and commit
+# the regenerated Move.lock (CI fails until then).
 [dependencies]
-access_gate = { git = "https://github.com/meddleware-org/access-gate-sui.git", rev = "22fe6d750ce727dd6ecdcb83c2de50f88401eee2" }
+access_gate = { git = "https://github.com/meddleware-org/access-gate-sui.git", rev = "dcd2d3c2f918904950e8cb079d0c648fc79475f3" }
 

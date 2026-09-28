@@ -6,19 +6,36 @@
 #[test_only]
 module seal_policies::nft_gate_tests;
 
-use access_gate::access_gate::{Self, Gate, AdminCap, AccessNFT, SoulboundAccessNFT};
+use access_gate::access_gate::{Self, Gate, AdminCap, AccessNFT, SoulboundAccessNFT, GatePolicy, PlatformConfig};
 use seal_policies::nft_gate;
+use sui::coin;
+use sui::sui::SUI;
 use sui::test_scenario as ts;
 
 const CREATOR: address = @0xA1;
 const HOLDER: address = @0xB0B;
 
-fun make_gate(s: &mut ts::Scenario, soulbound: bool, default_uses: u64) {
-    access_gate::create_gate(
-        0, CREATOR, default_uses, soulbound, false,
-        b"".to_string(), b"".to_string(), b"".to_string(),
-        s.ctx(),
+// Share a zero-fee PlatformConfig, then create a free gate with `policy` (ready to take next tx).
+fun make_gate_with(s: &mut ts::Scenario, soulbound: bool, default_uses: u64, policy: GatePolicy) {
+    access_gate::share_platform_config_zero_commission_for_testing(s.ctx());
+    s.next_tx(CREATOR);
+    let platform = s.take_shared<PlatformConfig>();
+    access_gate::create_free_gate(
+        &platform, coin::mint_for_testing<SUI>(0, s.ctx()), CREATOR, default_uses, soulbound, false,
+        b"".to_string(), b"".to_string(), b"".to_string(), policy, s.ctx(),
     );
+    ts::return_shared(platform);
+}
+
+fun make_gate(s: &mut ts::Scenario, soulbound: bool, default_uses: u64) {
+    make_gate_with(s, soulbound, default_uses, access_gate::default_gate_policy());
+}
+
+// Airdrop a pass from a free gate (the commission due is 0).
+fun grant(s: &mut ts::Scenario, cap: &AdminCap, gate: &Gate, recipient: address) {
+    let platform = s.take_shared<PlatformConfig>();
+    access_gate::airdrop(cap, gate, &platform, coin::mint_for_testing<SUI>(0, s.ctx()), recipient, s.ctx());
+    ts::return_shared(platform);
 }
 
 // A valid identity: the 32-byte gate id followed by a nonce suffix byte.
@@ -35,7 +52,7 @@ fun approve_unlimited_pass_succeeds() {
     s.next_tx(CREATOR);
     let gate = s.take_shared<Gate>();
     let cap = s.take_from_sender<AdminCap>();
-    access_gate::airdrop(&cap, &gate, HOLDER, s.ctx());
+    grant(&mut s, &cap, &gate, HOLDER);
     s.return_to_sender(cap);
 
     s.next_tx(HOLDER);
@@ -54,7 +71,7 @@ fun approve_soulbound_pass_succeeds() {
     s.next_tx(CREATOR);
     let gate = s.take_shared<Gate>();
     let cap = s.take_from_sender<AdminCap>();
-    access_gate::airdrop(&cap, &gate, HOLDER, s.ctx());
+    grant(&mut s, &cap, &gate, HOLDER);
     s.return_to_sender(cap);
 
     s.next_tx(HOLDER);
@@ -117,9 +134,9 @@ fun approve_with_foreign_nft_aborts() {
     let cap_a = s.take_from_sender<AdminCap>();
     // cap_a authorises exactly one of the gates; airdrop from whichever it matches.
     if (access_gate::admin_cap_gate_id(&cap_a) == object::id(&gate_a)) {
-        access_gate::airdrop(&cap_a, &gate_a, HOLDER, s.ctx());
+        grant(&mut s, &cap_a, &gate_a, HOLDER);
     } else {
-        access_gate::airdrop(&cap_a, &gate_b, HOLDER, s.ctx());
+        grant(&mut s, &cap_a, &gate_b, HOLDER);
     };
     s.return_to_sender(cap_a);
 
@@ -149,7 +166,7 @@ fun approve_with_wrong_namespace_aborts() {
     s.next_tx(CREATOR);
     let gate = s.take_shared<Gate>();
     let cap = s.take_from_sender<AdminCap>();
-    access_gate::airdrop(&cap, &gate, HOLDER, s.ctx());
+    grant(&mut s, &cap, &gate, HOLDER);
     s.return_to_sender(cap);
 
     s.next_tx(HOLDER);
@@ -174,7 +191,7 @@ fun approve_with_exact_32_byte_id_succeeds() {
     s.next_tx(CREATOR);
     let gate = s.take_shared<Gate>();
     let cap = s.take_from_sender<AdminCap>();
-    access_gate::airdrop(&cap, &gate, HOLDER, s.ctx());
+    grant(&mut s, &cap, &gate, HOLDER);
     s.return_to_sender(cap);
 
     s.next_tx(HOLDER);
@@ -199,7 +216,7 @@ fun approve_with_7_byte_id_aborts() {
     s.next_tx(CREATOR);
     let gate = s.take_shared<Gate>();
     let cap = s.take_from_sender<AdminCap>();
-    access_gate::airdrop(&cap, &gate, HOLDER, s.ctx());
+    grant(&mut s, &cap, &gate, HOLDER);
     s.return_to_sender(cap);
 
     s.next_tx(HOLDER);
@@ -220,7 +237,7 @@ fun approve_with_exhausted_pass_aborts() {
     s.next_tx(CREATOR);
     let gate = s.take_shared<Gate>();
     let cap = s.take_from_sender<AdminCap>();
-    access_gate::airdrop(&cap, &gate, HOLDER, s.ctx());
+    grant(&mut s, &cap, &gate, HOLDER);
     s.return_to_sender(cap);
 
     s.next_tx(HOLDER);
@@ -246,7 +263,7 @@ fun approve_soulbound_with_foreign_nft_aborts() {
     s.next_tx(CREATOR);
     let gate_a = s.take_shared<Gate>();
     let cap = s.take_from_sender<AdminCap>();
-    access_gate::airdrop(&cap, &gate_a, HOLDER, s.ctx());
+    grant(&mut s, &cap, &gate_a, HOLDER);
     s.return_to_sender(cap);
     ts::return_shared(gate_a);
 
@@ -269,7 +286,7 @@ fun approve_soulbound_with_exhausted_pass_aborts() {
     s.next_tx(CREATOR);
     let gate = s.take_shared<Gate>();
     let cap = s.take_from_sender<AdminCap>();
-    access_gate::airdrop(&cap, &gate, HOLDER, s.ctx());
+    grant(&mut s, &cap, &gate, HOLDER);
     s.return_to_sender(cap);
 
     s.next_tx(HOLDER);
@@ -291,7 +308,7 @@ fun approve_single_use_pass_with_uses_left_succeeds_without_consuming() {
     s.next_tx(CREATOR);
     let gate = s.take_shared<Gate>();
     let cap = s.take_from_sender<AdminCap>();
-    access_gate::airdrop(&cap, &gate, HOLDER, s.ctx());
+    grant(&mut s, &cap, &gate, HOLDER);
     s.return_to_sender(cap);
 
     s.next_tx(HOLDER);
@@ -312,7 +329,7 @@ fun approve_on_paused_gate_still_succeeds() {
     s.next_tx(CREATOR);
     let mut gate = s.take_shared<Gate>();
     let cap = s.take_from_sender<AdminCap>();
-    access_gate::airdrop(&cap, &gate, HOLDER, s.ctx());
+    grant(&mut s, &cap, &gate, HOLDER);
     access_gate::set_paused(&cap, &mut gate, true);
     s.return_to_sender(cap);
 
@@ -327,12 +344,7 @@ fun approve_on_paused_gate_still_succeeds() {
 // ── Gate policy: pause_blocks_decryption ─────────────────────────────────────────
 
 fun make_policy_gate(s: &mut ts::Scenario, pause_blocks_decryption: bool) {
-    access_gate::create_gate_with_policy(
-        0, CREATOR, 0, false, false,
-        b"".to_string(), b"".to_string(), b"".to_string(),
-        access_gate::new_gate_policy(false, false, pause_blocks_decryption),
-        s.ctx(),
-    );
+    make_gate_with(s, false, 0, access_gate::new_gate_policy(false, false, pause_blocks_decryption, false));
 }
 
 // Airdrop a pass, pause the gate, then approve as the holder.
@@ -342,7 +354,7 @@ fun approve_while_paused(pause_blocks_decryption: bool) {
     s.next_tx(CREATOR);
     let mut gate = s.take_shared<Gate>();
     let cap = s.take_from_sender<AdminCap>();
-    access_gate::airdrop(&cap, &gate, HOLDER, s.ctx());
+    grant(&mut s, &cap, &gate, HOLDER);
     access_gate::set_paused(&cap, &mut gate, true);
     s.return_to_sender(cap);
 
@@ -372,7 +384,7 @@ fun approve_resumes_after_unpause_when_policy_blocks_decryption() {
     s.next_tx(CREATOR);
     let mut gate = s.take_shared<Gate>();
     let cap = s.take_from_sender<AdminCap>();
-    access_gate::airdrop(&cap, &gate, HOLDER, s.ctx());
+    grant(&mut s, &cap, &gate, HOLDER);
     access_gate::set_paused(&cap, &mut gate, true);
     access_gate::set_paused(&cap, &mut gate, false);
     s.return_to_sender(cap);
