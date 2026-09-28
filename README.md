@@ -67,13 +67,13 @@ sui move test        # 24 unit tests (nft_gate + timelock + sealed_content)
 
 | Network | Package ID |
 | --- | --- |
-| testnet | `0x9f0563bfe42fbd29932cd280cc47efe17f5339b4dc569eb110114665eecc231e` (used by `seal-ui` and `seal-client` tests; `Published.toml`) |
+| testnet | `0x42cc181f851ef702c1fddc9b925553f03b71784edff49d80fbc260055f86d612` (links `access_gate` `0x1a81ca…`; `Published.toml`) |
 | mainnet | — (pending) |
 
-`0x9f0563…` is canonical (verified on-chain 2026-09-28: it links `access_gate` `0x0bedd0…`, the
-package of every live gate). A second testnet publish, `0x67520f80…88d3`, bundles its own copy of the
-`access_gate` module instead of linking the real one, so its `nft_gate` can never accept a real
-gate's pass; it is not referenced anywhere (see [the audit](docs/audit/seal-policies-sui-audit.md), F8).
+Superseded: `0x9f0563bf…231e` (linked the pre-policy `access_gate` `0x0bedd0…`; UpgradeCap burned).
+Strays `0x67520f80…88d3` and `0x882fcc68…e8cc` bundle their own copy of the `access_gate` module, so
+their `nft_gate` can never accept a real gate's pass; their UpgradeCaps are burned (see
+[the audit](docs/audit/seal-policies-sui-audit.md), F8).
 
 ## Dependency on `access-gate-sui`
 
@@ -83,12 +83,13 @@ used because tags are mutable (`v0.0.1` has already been moved to a different co
 
 ```toml
 [dependencies]
-access_gate = { git = "https://github.com/meddleware-org/access-gate-sui.git", rev = "f191c2d338006c056d4ecfafa9bb0404afed37a5" }
+access_gate = { git = "https://github.com/meddleware-org/access-gate-sui.git", rev = "dcd2d3c2f918904950e8cb079d0c648fc79475f3" }
 ```
 
-That commit's manifest resolves `access_gate` to the canonical testnet package `0x0bedd0…`, which the
-published `seal_policies` links against (the live access-gate objects are of that package's types).
-Change the rev only together with the address it resolves to, and re-publish if that address changes.
+That commit records the testnet publication of `access_gate` `0x1a81ca…` (its `Published.toml`), which
+the published `seal_policies` links against. Change the rev only together with the address it
+resolves to, and re-publish if that address changes. `Move.lock` is regenerated once the pinned
+commit is on GitHub (`sui move build --build-env testnet`).
 
 ## Deploy
 

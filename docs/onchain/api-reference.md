@@ -4,10 +4,8 @@ title: Sealed Storage policies — on-chain API reference
 
 # Sealed Storage policies — on-chain API reference
 
-Package `seal_policies` (Move 2024). Depends on `access_gate`, pinned to a commit SHA. The live
-testnet package `0x9f0563…` was built against `f191c2d…` (→ `access_gate` `0x0bedd0…`, no gate
-policies); the source pins `22fe6d7…` (gate policies), which ships with the next access-gate
-publish. No `init`, no capabilities, no admin objects.
+Package `seal_policies` (Move 2024), testnet `0x42cc181f…d612`. Depends on `access_gate` `0x1a81ca…`
+(git dependency pinned to a commit SHA). No `init`, no capabilities, no admin objects.
 
 ## `seal_policies::nft_gate` (policy)
 
@@ -26,7 +24,7 @@ Keys already released stay usable — pausing stops new key releases, not past o
 | 1 | `E_ID_NOT_NAMESPACED` | Identity shorter than 32 bytes or not prefixed with this gate's id |
 | 2 | `E_WRONG_GATE` | The NFT was not minted from this gate |
 | 3 | `E_EXHAUSTED` | Single-use pass with zero uses remaining |
-| 4 | `E_GATE_PAUSED` | Gate is paused and its policy has `pause_blocks_decryption` (source only — not in `0x9f0563…`) |
+| 4 | `E_GATE_PAUSED` | Gate is paused and its policy has `pause_blocks_decryption` (not in the superseded `0x9f0563…`) |
 
 ## `seal_policies::timelock` (policy)
 

@@ -4,12 +4,12 @@
 **Project:** `repos/seal-policies-sui` — on-chain Seal access-control policies (Sui Move)
 **Project type:** Move package
 **Template:** AUDIT_TEMPLATE.md (2026-09-28) + AUDIT_TEMPLATE_SUI.md (2026-09-28)
-**Package:** `seal_policies` v0.0.3; edition 2024; framework rev `b0535f1f3a33` (Move.lock, testnet); `access_gate` pinned to commit `8f38cfba…` (source; the live package was built from `f191c2d3…`)
-**Deployment status:** testnet — `0x9f0563bfe42fbd29932cd280cc47efe17f5339b4dc569eb110114665eecc231e` (`Published.toml`; used by `seal-ui` and `seal-client` tests; UpgradeCap `0x20de324f…a1a0` **live**, compatible policy, publisher EOA). A broken stray publish `0x67520f80…88d3` (UpgradeCap `0xbecf9893…c8af`, live) bundles its own copy of `access_gate` and is referenced nowhere (F8). The source (pause policy, F14) is ahead of the deployment. Mainnet: unpublished.
+**Package:** `seal_policies` v0.0.3; edition 2024; framework rev `b0535f1f3a33` (Move.lock, testnet); `access_gate` pinned to commit `dcd2d3c2…` (records access_gate `0x1a81ca…`)
+**Deployment status:** testnet — `0x42cc181f851ef702c1fddc9b925553f03b71784edff49d80fbc260055f86d612` (published 2026-09-28 against access_gate `0x1a81ca…`; `Published.toml`; UpgradeCap `0x0ff7fa39…912f` **live**, compatible policy, publisher EOA). Superseded `0x9f0563…` (linked the pre-policy `0x0bedd0…`) and strays `0x67520f…`, `0x882fcc…` (self-bundled access_gate copies) are immutable — UpgradeCaps burned. Mainnet: unpublished.
 **Review date:** 2026-09-18 (first pass) · re-verified and relocated 2026-09-28
 **Reviewer:** Internal review (Move contract reviewer)
 **Severity ceiling:** Low — policies are read-only `seal_approve*` dry-run gates and hold no capabilities or funds; Seal enforces object ownership before policy logic runs, so a policy is a second gate. The one lever with higher impact is the `UpgradeCap` (an upgrade could de-gate all sealed content) — tracked as a pre-mainnet gate.
-**Status:** re-verified 2026-09-28 (second pass same day: pause policy, canonical package)
+**Status:** re-verified 2026-09-28 (third pass same day: republished, caps burned)
 
 Relocated from the workspace corpus (`docs/audit/seal-policies-sui-audit.md`, now a pointer stub).
 All `F#` / `OQ#` identifiers from the first pass are preserved.
@@ -183,10 +183,11 @@ the rule when they seal; unpausing restores access; keys already released are un
 cannot revoke). **Evidence:** `approve_denied_while_paused_when_policy_blocks_decryption`,
 `approve_allowed_while_paused_without_policy`, `approve_resumes_after_unpause_when_policy_blocks_decryption`
 (24/24).
-**Release coupling:** requires the policy-aware `access_gate` (commit `22fe6d7`, unpublished). The
-Move.toml comment records the order: publish access-gate → bump this rev to the commit that records
-that publish → rebuild (regenerates `Move.lock`, currently still `f191c2d`, so CI fails until then)
-→ publish this package as a new ID → point seal-ui/seal-client at it.
+**Release (done 2026-09-28):** access_gate published as `0x1a81ca…` (`dcd2d3c`), this package
+published against it as `0x42cc18…` (`5830687`; linkage verified via GraphQL), and seal-ui / seal-client
+defaults updated. Outstanding: `Move.lock` still pins `f191c2d` until `dcd2d3c` is pushed and the lock
+regenerated (CI fails until then). The testnet time-lock round-trip against `0x42cc18…` passes
+(`seal-client` integration, real key servers).
 
 ### F13 — docs./dev. sites import the canonical on-chain docs only after npm publication
 **Severity:** Info   **Disposition:** DEFERRED (exact remediation below)
@@ -230,7 +231,7 @@ imported, no dead links, lint/type-check green).
 
 | Dependency | Exact object ID / rev / commit | Fails open or closed if unavailable? | Paths it can block | Notes |
 | --- | --- | --- | --- | --- |
-| `access_gate` (git) | commit `8f38cfba…` (source; unpublished) — live `0x9f0563…` built from `f191c2d3…` → `0x0bedd0…` | n/a (build); on-chain reads only | none | own audit; SHA-pinned (F1); release order in F14 |
+| `access_gate` (git) | commit `dcd2d3c2…` → package `0x1a81ca…` | n/a (build); on-chain reads only | none | own audit; SHA-pinned (F1); release order in F14 |
 | Sui framework / MoveStdlib | `b0535f1f3a33…` (Move.lock) | n/a | build | — |
 | System `Clock` `0x6` | `0x6` | n/a (always present) | timelock approval | trusted system object |
 | Seal key-server committee | committee object IDs (seal-ui config) | **closed** — no key shares, no decryption | decrypt | third-party liveness; nothing is released by default |
@@ -254,8 +255,9 @@ imported, no dead links, lint/type-check green).
 
 | Network | Package ID | `UpgradeCap` ID | Status | Intended policy | Tooling |
 | --- | --- | --- | --- | --- | --- |
-| testnet | `0x9f0563…231e` | `0x20de…a1a0` | **held** by publisher EOA (policy 0) | burn or multisig (OQ3) | `make-immutable.sh` / `transfer-upgrade-cap.sh` (dry-run default, `YES`, on-chain verification — F9) |
-| testnet | `0x67520f…88d3` (stray, broken) | `0xbecf98…c8af` | **held** by publisher EOA | burn (OQ8) | `make_immutable` call |
+| testnet | `0x42cc18…d612` (current) | `0x0ff7fa39…912f` | **held** by publisher EOA (policy 0) | burn or multisig — operator requirement before launch (OQ3) | `make-immutable.sh` / `transfer-upgrade-cap.sh` (dry-run default, `YES`, on-chain verification — F9) |
+| testnet | `0x9f0563…231e` (superseded) | `0x20de…a1a0` | **burned** 2026-09-28 | — | — |
+| testnet | `0x67520f…88d3`, `0x882fcc…e8cc` (strays, broken) | `0xbecf98…c8af`, `0x507dd6d1…0689` | **burned** 2026-09-28 | — | — |
 | mainnet | — | — | unpublished | decide before publish (OQ3) | same scripts |
 
 **Versioning:** a new policy version is a new package ID; ciphertexts reference the package in their
@@ -311,9 +313,10 @@ share; consumers: seal-ui discovery) — verifiers MUST NOT treat `publisher` or
 ### pre-testnet
 
 - [ ] docs./dev. sites install the published `@meddleware/seal-policies-sui` and import its on-chain docs — F13
-- [x] published — `0x9f0563…` (stray `0x67520f…` unused)
+- [x] published — `0x42cc18…` against access_gate `0x1a81ca…` (strays and superseded immutable)
 - [x] package ID recorded consistently across `Move.toml` / `Published.toml` / consumers — F8
-- [ ] republish after access-gate (F14 release order); update seal-ui / seal-client package IDs
+- [x] republished after access-gate (F14); seal-ui / seal-client defaults updated
+- [ ] push access-gate-sui, then regenerate `Move.lock` here
 - [x] dependency pinned to a commit SHA; lockfile committed — F1
 - [x] identity-layout conformance vector green on both sides — F2/F7
 - [x] custody tooling with dry-run default, confirmation and on-chain verification — F9
@@ -380,7 +383,8 @@ share; consumers: seal-ui discovery) — verifiers MUST NOT treat `publisher` or
 7. **OQ7** Should pausing or freezing a gate also stop decryption for existing passes?
    *(2026-09-28, owner: pausing — yes, operator-configurable per gate (F14); freezing — no.)*
 8. **OQ8** Burn the stray `0x67520f…`'s `UpgradeCap` (`0xbecf98…c8af`) so it can never be upgraded
-   into something that looks canonical?
+   into something that looks canonical? *(2026-09-28, owner: yes — burned (`7eVuy4bm…`), with the
+   other stray `0x882fcc…` (`59fxcjj3…`) and the superseded `0x9f0563…` (`6LSSqZ8W…`).)*
 
 ## Risks (residual)
 
@@ -388,8 +392,9 @@ share; consumers: seal-ui discovery) — verifiers MUST NOT treat `publisher` or
 - **Upgrade authority:** until OQ3 executes, one key can change who can decrypt every ciphertext.
 - **Indefinite decryptability:** access cannot be revoked once a key is released (by design); a
   pause under `pause_blocks_decryption` stops only new key releases.
-- **Release coupling:** until access-gate `22fe6d7` is published and this package rebuilt, the source
-  cannot build from git (CI red) and the pause policy is not live.
+- **Release coupling:** until access-gate `dcd2d3c` is pushed and `Move.lock` regenerated, the source
+  cannot build from git (CI red). Content sealed under `0x9f0563…` keeps its old semantics (no pause
+  policy).
 - **Discovery spoofing:** anyone can publish look-alike pointers; only UI filtering protects users.
 - **Cross-repo drift:** the identity layout is duplicated in two repos; the shared vector detects
   but does not prevent drift.
@@ -407,3 +412,7 @@ share; consumers: seal-ui discovery) — verifiers MUST NOT treat `publisher` or
   RESOLVED via F14; F8 RESOLVED (GraphQL reads: `0x9f0563…` links `0x0bedd0…`; `0x67520f…` embeds its
   own `access_gate`); owner answers to OQ3/OQ7 recorded; OQ8 added. 24/24 tests (scratch copy with a
   local `access_gate`).
+- 2026-09-28 (third pass) — republished as `0x42cc18…` against access_gate `0x1a81ca…` (`5830687`;
+  linkage verified); tests updated for the new access_gate ABI (24/24, scratch copy with a local
+  `access_gate`); seal timelock integration passes on testnet against the new package; OQ8 answered
+  (stray and superseded caps burned).

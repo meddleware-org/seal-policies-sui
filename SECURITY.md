@@ -10,7 +10,7 @@ This policy covers security issues in:
 - The discovery registry (`sources/sealed_content.move`) as it affects integrity of published
   pointers
 - The published testnet package at
-  `0x9f0563bfe42fbd29932cd280cc47efe17f5339b4dc569eb110114665eecc231e`
+  `0x42cc181f851ef702c1fddc9b925553f03b71784edff49d80fbc260055f86d612`
 
 It does not cover:
 
@@ -49,9 +49,10 @@ Known, intentional properties (not vulnerabilities):
   released the content stays decryptable by that holder indefinitely. Freezing a gate never affects
   decryption; pausing blocks **new** key releases only for gates created with the
   `pause_blocks_decryption` policy (`E_GATE_PAUSED`) — keys already released cannot be revoked.
-- **Upgrade authority.** The testnet package `0x9f0563…` still has a live `UpgradeCap`
-  (`0x20de324f…a1a0`); burning it or moving it to a multisig is a pre-mainnet gate in the audit
-  (`docs/audit/seal-policies-sui-audit.md`).
+- **Upgrade authority.** The testnet package `0x42cc18…` has a live `UpgradeCap`
+  (`0x0ff7fa39…912f`); burning it or moving it to a multisig is an operator requirement before launch
+  in the audit (`docs/audit/seal-policies-sui-audit.md`). Superseded and stray packages are immutable
+  (caps burned 2026-09-28).
 
 ## Supported versions
 
