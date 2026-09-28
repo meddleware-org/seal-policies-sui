@@ -3,7 +3,7 @@
   "version": "0.0.3",
   "private": false,
   "type": "module",
-  "author": "MeddleWare <meddleware@proton.me>",
+  "author": "MeddleWare <dev@meddleware.co.uk>",
   "license": "0BSD",
   "description": "Modular Seal access-control policies for Sui (Move source, canonical on-chain docs, and audit). Consumed by the docs./dev. sites at build time.",
   "homepage": "https://github.com/meddleware-org/seal-policies-sui#readme",
