@@ -12,6 +12,10 @@
 ///
 /// Note: `seal_approve` must be side-effect free, so a single-use pass acts as *membership*
 /// here (it is not consumed per decryption) — we only reject a pass already exhausted to zero.
+///
+/// Pausing: a paused gate still admits decryption by default. If the gate was created with the
+/// `pause_blocks_decryption` policy (`access_gate::create_gate_with_policy`), decryption is denied
+/// while it is paused (`E_GATE_PAUSED`) and resumes when it is unpaused.
 module seal_policies::nft_gate;
 
 use access_gate::access_gate::{Self, Gate, AccessNFT, SoulboundAccessNFT};
@@ -22,10 +26,13 @@ const E_ID_NOT_NAMESPACED: u64 = 1;
 const E_WRONG_GATE: u64 = 2;
 /// A single-use pass with zero remaining uses cannot authorise.
 const E_EXHAUSTED: u64 = 3;
+/// The gate is paused and its policy says pausing blocks decryption.
+const E_GATE_PAUSED: u64 = 4;
 
 /// Seal approval for a transferable access NFT.
 entry fun seal_approve(id: vector<u8>, gate: &Gate, nft: &AccessNFT) {
     assert_namespaced(&id, gate);
+    assert_not_paused_if_required(gate);
     assert!(access_gate::is_valid_for(nft, gate), E_WRONG_GATE);
     assert_has_uses(access_gate::uses_remaining(nft));
 }
@@ -33,6 +40,7 @@ entry fun seal_approve(id: vector<u8>, gate: &Gate, nft: &AccessNFT) {
 /// Seal approval for a soulbound access NFT.
 entry fun seal_approve_soulbound(id: vector<u8>, gate: &Gate, nft: &SoulboundAccessNFT) {
     assert_namespaced(&id, gate);
+    assert_not_paused_if_required(gate);
     assert!(access_gate::is_valid_for_soulbound(nft, gate), E_WRONG_GATE);
     assert_has_uses(access_gate::uses_remaining_soulbound(nft));
 }
@@ -46,6 +54,14 @@ fun assert_namespaced(id: &vector<u8>, gate: &Gate) {
         assert!(id[i] == gid[i], E_ID_NOT_NAMESPACED);
         i = i + 1;
     };
+}
+
+/// Honour the gate's `pause_blocks_decryption` policy.
+fun assert_not_paused_if_required(gate: &Gate) {
+    assert!(
+        !(access_gate::gate_pause_blocks_decryption(gate) && access_gate::gate_is_paused(gate)),
+        E_GATE_PAUSED,
+    );
 }
 
 fun assert_has_uses(remaining: Option<u64>) {

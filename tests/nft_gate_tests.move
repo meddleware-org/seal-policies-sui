@@ -324,3 +324,64 @@ fun approve_on_paused_gate_still_succeeds() {
     s.end();
 }
 
+// ── Gate policy: pause_blocks_decryption ─────────────────────────────────────────
+
+fun make_policy_gate(s: &mut ts::Scenario, pause_blocks_decryption: bool) {
+    access_gate::create_gate_with_policy(
+        0, CREATOR, 0, false, false,
+        b"".to_string(), b"".to_string(), b"".to_string(),
+        access_gate::new_gate_policy(false, false, pause_blocks_decryption),
+        s.ctx(),
+    );
+}
+
+// Airdrop a pass, pause the gate, then approve as the holder.
+fun approve_while_paused(pause_blocks_decryption: bool) {
+    let mut s = ts::begin(CREATOR);
+    make_policy_gate(&mut s, pause_blocks_decryption);
+    s.next_tx(CREATOR);
+    let mut gate = s.take_shared<Gate>();
+    let cap = s.take_from_sender<AdminCap>();
+    access_gate::airdrop(&cap, &gate, HOLDER, s.ctx());
+    access_gate::set_paused(&cap, &mut gate, true);
+    s.return_to_sender(cap);
+
+    s.next_tx(HOLDER);
+    let nft = s.take_from_sender<AccessNFT>();
+    nft_gate::seal_approve(id_for(&gate), &gate, &nft);
+    s.return_to_sender(nft);
+    ts::return_shared(gate);
+    s.end();
+}
+
+#[test]
+#[expected_failure(abort_code = 4)] // E_GATE_PAUSED
+fun approve_denied_while_paused_when_policy_blocks_decryption() {
+    approve_while_paused(true);
+}
+
+#[test]
+fun approve_allowed_while_paused_without_policy() {
+    approve_while_paused(false);
+}
+
+#[test]
+fun approve_resumes_after_unpause_when_policy_blocks_decryption() {
+    let mut s = ts::begin(CREATOR);
+    make_policy_gate(&mut s, true);
+    s.next_tx(CREATOR);
+    let mut gate = s.take_shared<Gate>();
+    let cap = s.take_from_sender<AdminCap>();
+    access_gate::airdrop(&cap, &gate, HOLDER, s.ctx());
+    access_gate::set_paused(&cap, &mut gate, true);
+    access_gate::set_paused(&cap, &mut gate, false);
+    s.return_to_sender(cap);
+
+    s.next_tx(HOLDER);
+    let nft = s.take_from_sender<AccessNFT>();
+    nft_gate::seal_approve(id_for(&gate), &gate, &nft);
+    s.return_to_sender(nft);
+    ts::return_shared(gate);
+    s.end();
+}
+
