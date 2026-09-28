@@ -25,7 +25,9 @@ a pass for gate A cannot decrypt content sealed for gate B — and (2) `access_g
 under the requester's address, so a non-owned NFT fails input validation before this runs.
 
 Because `seal_approve` must be side-effect free, a single-use pass acts as **membership** (it is not
-consumed per decrypt); an already-exhausted (zero-use) pass is rejected.
+consumed per decrypt); an already-exhausted (zero-use) pass is rejected. If the gate's immutable
+`access_gate` policy has `pause_blocks_decryption`, a paused gate also denies decryption
+(`E_GATE_PAUSED = 4`) until it is unpaused; otherwise pausing only stops purchases.
 
 ### `timelock`
 
@@ -58,7 +60,7 @@ module with its own `seal_approve*`; none changes the existing modules:
 
 ```bash
 sui move build
-sui move test        # 21 unit tests (nft_gate + timelock + sealed_content)
+sui move test        # 24 unit tests (nft_gate + timelock + sealed_content)
 ```
 
 ## Deployments
@@ -68,8 +70,10 @@ sui move test        # 21 unit tests (nft_gate + timelock + sealed_content)
 | testnet | `0x9f0563bfe42fbd29932cd280cc47efe17f5339b4dc569eb110114665eecc231e` (used by `seal-ui` and `seal-client` tests; `Published.toml`) |
 | mainnet | — (pending) |
 
-A second testnet deployment, `0x67520f80…88d3`, is recorded as `published-at` in `Move.toml`; which
-of the two is canonical is an open question in [the audit](docs/audit/seal-policies-sui-audit.md).
+`0x9f0563…` is canonical (verified on-chain 2026-09-28: it links `access_gate` `0x0bedd0…`, the
+package of every live gate). A second testnet publish, `0x67520f80…88d3`, bundles its own copy of the
+`access_gate` module instead of linking the real one, so its `nft_gate` can never accept a real
+gate's pass; it is not referenced anywhere (see [the audit](docs/audit/seal-policies-sui-audit.md), F8).
 
 ## Dependency on `access-gate-sui`
 

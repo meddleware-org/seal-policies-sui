@@ -27,8 +27,12 @@ mirrors one client provider 1:1.
   `is_valid_for`) without changing it. `sealed_content` is an **additive** discovery registry, also
   without touching `access_gate`.
 - **Move deps are git/local, never a registry.** `access_gate` is a git dependency pinned to an
-  immutable **commit SHA** (`f191c2d…`, resolving to the canonical testnet `0x0bedd0…`) — never a
-  mutable tag. See the README's dependency notes.
+  immutable **commit SHA** — never a mutable tag. The live `0x9f0563…` was built from `f191c2d…`
+  (→ `access_gate` `0x0bedd0…`); the source now pins `8f38cfb…` (GatePolicy), which must be
+  published before this package is rebuilt. See the Move.toml comment and README.
+- **Pause may block decryption, per gate.** `nft_gate` aborts `E_GATE_PAUSED = 4` only when the
+  gate's `GatePolicy.pause_blocks_decryption` is set and the gate is paused; otherwise a paused
+  gate still decrypts (pause stops purchases only).
 
 ## Layout
 
@@ -37,7 +41,7 @@ mirrors one client provider 1:1.
 | `sources/nft_gate.move` | `seal_approve` / `seal_approve_soulbound` — gate-pass membership policy. |
 | `sources/timelock.move` | `seal_approve` — Clock-based time-lock (`0x6`). |
 | `sources/sealed_content.move` | `publish(...)` + `SealedContentPublished` event — discovery pointers (not a policy). |
-| `tests/*` | 21 unit tests (nft_gate + timelock + sealed_content). Run `sui move test`. |
+| `tests/*` | 24 unit tests (nft_gate + timelock + sealed_content). Run `sui move test`. |
 | `Move.toml` / `Published.toml` | Package manifest + recorded publish. |
 
 The full module/identity/roadmap tables live in [README.md](README.md) — keep the two in sync.

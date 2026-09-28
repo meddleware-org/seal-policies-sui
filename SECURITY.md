@@ -46,8 +46,9 @@ Known, intentional properties (not vulnerabilities):
   nothing — decryption still requires `nft_gate::seal_approve*` to pass — but discovery UIs must not
   trust labels or publishers.
 - **Membership, not consumption.** A valid pass authorises decryption repeatedly; once a key is
-  released the content stays decryptable by that holder indefinitely. Pausing or freezing the gate
-  does not revoke decryption for existing passes.
+  released the content stays decryptable by that holder indefinitely. Freezing a gate never affects
+  decryption; pausing blocks **new** key releases only for gates created with the
+  `pause_blocks_decryption` policy (`E_GATE_PAUSED`) — keys already released cannot be revoked.
 - **Upgrade authority.** The testnet package `0x9f0563…` still has a live `UpgradeCap`
   (`0x20de324f…a1a0`); burning it or moving it to a multisig is a pre-mainnet gate in the audit
   (`docs/audit/seal-policies-sui-audit.md`).

@@ -4,24 +4,29 @@ title: Sealed Storage policies — on-chain API reference
 
 # Sealed Storage policies — on-chain API reference
 
-Package `seal_policies` (Move 2024). Depends on `access_gate` (pinned to commit `f191c2d…`, which
-resolves to the canonical testnet package `0x0bedd0…`). No `init`, no capabilities, no admin objects.
+Package `seal_policies` (Move 2024). Depends on `access_gate`, pinned to a commit SHA. The live
+testnet package `0x9f0563…` was built against `f191c2d…` (→ `access_gate` `0x0bedd0…`, no gate
+policies); the source pins `8f38cfb…` (gate policies), which ships with the next access-gate
+publish. No `init`, no capabilities, no admin objects.
 
 ## `seal_policies::nft_gate` (policy)
 
 | Function | Signature | Checks, in order |
 | --- | --- | --- |
-| `seal_approve` | `entry fun seal_approve(id: vector<u8>, gate: &Gate, nft: &AccessNFT)` | `id` ≥ 32 bytes and `id[0..32] == object::id_bytes(gate)` (else 1); `access_gate::is_valid_for(nft, gate)` (else 2); single-use pass has uses > 0 (else 3) |
+| `seal_approve` | `entry fun seal_approve(id: vector<u8>, gate: &Gate, nft: &AccessNFT)` | `id` ≥ 32 bytes and `id[0..32] == object::id_bytes(gate)` (else 1); `access_gate::is_valid_for(nft, gate)` (else 2); not (paused and policy `pause_blocks_decryption`) (else 4); single-use pass has uses > 0 (else 3) |
 | `seal_approve_soulbound` | `entry fun seal_approve_soulbound(id: vector<u8>, gate: &Gate, nft: &SoulboundAccessNFT)` | same, via `is_valid_for_soulbound` / `uses_remaining_soulbound` |
 
-Side-effect free: immutable references only; no mutation, transfer, object creation or events. Does
-not check `gate.paused` / `gate.frozen`.
+Side-effect free: immutable references only; no mutation, transfer, object creation or events.
+Pausing a gate blocks decryption **only** if the gate was created with the `access_gate` policy flag
+`pause_blocks_decryption`; decryption resumes when the gate is unpaused. `frozen` is never checked.
+Keys already released stay usable — pausing stops new key releases, not past ones.
 
 | Code | Constant | Meaning |
 | --- | --- | --- |
 | 1 | `E_ID_NOT_NAMESPACED` | Identity shorter than 32 bytes or not prefixed with this gate's id |
 | 2 | `E_WRONG_GATE` | The NFT was not minted from this gate |
 | 3 | `E_EXHAUSTED` | Single-use pass with zero uses remaining |
+| 4 | `E_GATE_PAUSED` | Gate is paused and its policy has `pause_blocks_decryption` (source only — not in `0x9f0563…`) |
 
 ## `seal_policies::timelock` (policy)
 

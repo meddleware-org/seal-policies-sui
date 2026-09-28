@@ -3,7 +3,9 @@ edition = "2024"
 name = "seal_policies"
 version = "0.0.3"
 license = "0BSD"
-published-at = "0x67520f808bd47014c813841d654e2863619628db598c5943cc67f463466088d3"
+# No `published-at`: the live testnet package 0x9f0563bf…231e is recorded in Published.toml
+# (Sui >= 1.80). 0x67520f80…88d3 is a broken stray publish that bundles its own copy of the
+# access_gate module (linkage 0x1/0x2 only), so no real gate can be used with it (audit F8).
 
 # Depends on the access-gate primitive for the `nft_gate` policy. The Sui framework is an
 # implicit system dependency (as in access-gate-sui). access_gate is consumer-agnostic and

@@ -27,6 +27,9 @@ The TypeScript side is `@meddleware/seal-client` (policy registry + `SealControl
    the UI (e.g. only show pointers whose `publisher` is the gate's known operator).
 5. **Disambiguate aborts by `(module, code)`.** `nft_gate` and `timelock` both use code `1`, and
    `access_gate` reuses small integers too.
+6. **Surface a paused gate distinctly.** `nft_gate` code `4` (`E_GATE_PAUSED`) means the gate is
+   paused and its policy blocks decryption while paused — tell the user access resumes when the
+   operator unpauses, rather than reporting a missing or invalid pass.
 
 ## The approve PTB (what the key server dry-runs)
 
