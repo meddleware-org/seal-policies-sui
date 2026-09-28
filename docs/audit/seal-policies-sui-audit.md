@@ -98,7 +98,7 @@ Critical / High / Medium / Low / Info / Positive.
 whose manifest resolves `access_gate` to `0x692547…`, while `Move.lock` and the deployed package use
 `f191c2d` → `0x0bedd0…` (the address of every live gate). Regenerating the lock would have silently
 re-linked the policies against a package no gate uses.
-**Remediation / evidence:** commit `e45afb6` — `rev = "f191c2d338006c056d4ecfafa9bb0404afed37a5"`;
+**Remediation / evidence:** commit `434df4d` — `rev = "f191c2d338006c056d4ecfafa9bb0404afed37a5"`;
 `Move.lock` unchanged (confirms the SHA is what was already resolved); README/CLAUDE updated to
 require SHA pins.
 
@@ -119,13 +119,13 @@ Shared vector in `seal-client/tests/conformance-vectors.json` ↔ `conformance_*
 
 ### F6 — `sealed_content` had no tests
 **Severity:** Low   **Disposition:** RESOLVED
-**Evidence:** commit `e45afb6` — `tests/sealed_content_tests.move`: shared object created with the
+**Evidence:** commit `434df4d` — `tests/sealed_content_tests.move`: shared object created with the
 exact fields, one event emitted; permissionless/unvalidated behaviour documented as a test.
 
 ### F7 — Gate-id conformance test was tautological
 **Severity:** Low   **Disposition:** RESOLVED
 **Issue:** "property 2" compared a hand-built `0x123` vector with itself.
-**Evidence:** commit `e45afb6` — now asserts `object::id_from_address(@0x123).to_bytes()` (the same
+**Evidence:** commit `434df4d` — now asserts `object::id_from_address(@0x123).to_bytes()` (the same
 encoding `assert_namespaced` compares via `object::id_bytes`) equals the shared vector.
 
 ### F8 — Package address drift
@@ -142,7 +142,7 @@ embeds its **own** `access_gate` module (with its own `PlatformConfig`, `Publish
 gate works with it. No `SealedContent` exists under either package.
 **Remediation / evidence:** `Move.toml` no longer carries `published-at` (the publish record lives in
 `Published.toml`, Sui ≥ 1.80), with a comment naming both IDs; `seal-ui/.env.example` now uses
-`0x9f0563…` (seal-ui `87cd512`). Burning the stray's cap is OQ8.
+`0x9f0563…` (seal-ui `3fbbcf6`). Burning the stray's cap is OQ8.
 
 ### F9 — Custody scripts did not verify which package's `UpgradeCap` they act on
 **Severity:** Medium   **Disposition:** RESOLVED
@@ -150,7 +150,7 @@ gate works with it. No `SealedContent` exists under either package.
 **Issue:** with an `UPGRADE_CAP_ID` override (or a stale `Published.toml`), the scripts would burn —
 irreversibly — or transfer whatever cap was given; the same deploy key also owns access-gate's
 `UpgradeCap`. No active-env or address-format check; no proof of burn.
-**Evidence:** commit `e5dbcd5` — both scripts verify on-chain that the object is an `UpgradeCap` whose
+**Evidence:** commit `dd8fe36` — both scripts verify on-chain that the object is an `UpgradeCap` whose
 `package` equals this package (`Published.toml published-at`), owned by the active address, on the
 active env = `NETWORK`; the multisig address is validated; after `make_immutable` the script requires
 the cap to be gone. Dry-run against testnet: seal cap verified; access-gate's cap refused.
@@ -164,7 +164,7 @@ created with `pause_blocks_decryption` denies new key releases while paused — 
 ### F11 — Documentation drift
 **Severity:** Info   **Disposition:** RESOLVED — README/CLAUDE said 8 tests and a tag rev; the dev
 site documented non-existent modules (`nft_gate_policy::create`, `approve`); now canonical
-`docs/onchain/*` consumed by both sites — docs `e311020`, dev `19499e0` (policy guide rewritten).
+`docs/onchain/*` consumed by both sites — docs `193ef22`, dev `4492c3c` (policy guide rewritten).
 
 ### F12 — Membership, not consumption
 **Severity:** Info   **Disposition:** ADJUDICATED (first-pass OQ2 intent confirmed) — a single-use
@@ -173,7 +173,7 @@ pass authorises decryption repeatedly and a released key stays usable;
 `SECURITY.md` and the user guide.
 
 ### F14 — Pause blocks decryption when the gate's policy says so
-**Severity:** Info (design)   **Disposition:** RESOLVED (commit `f5f35dc`; on-chain after republish)
+**Severity:** Info (design)   **Disposition:** RESOLVED (commit `53a0c95`; on-chain after republish)
 **Decision (owner):** pausing a gate should stop decryption as an operator-configurable behaviour, in
 the same way as access-gate's freeze/commission policies (access-gate F24).
 **Where:** `nft_gate::assert_not_paused_if_required` in both `seal_approve*`, reading
@@ -183,7 +183,7 @@ the rule when they seal; unpausing restores access; keys already released are un
 cannot revoke). **Evidence:** `approve_denied_while_paused_when_policy_blocks_decryption`,
 `approve_allowed_while_paused_without_policy`, `approve_resumes_after_unpause_when_policy_blocks_decryption`
 (24/24).
-**Release coupling:** requires the policy-aware `access_gate` (commit `8f38cfb`, unpublished). The
+**Release coupling:** requires the policy-aware `access_gate` (commit `22fe6d7`, unpublished). The
 Move.toml comment records the order: publish access-gate → bump this rev to the commit that records
 that publish → rebuild (regenerates `Move.lock`, currently still `f191c2d`, so CI fails until then)
 → publish this package as a new ID → point seal-ui/seal-client at it.
@@ -304,7 +304,7 @@ share; consumers: seal-ui discovery) — verifiers MUST NOT treat `publisher` or
 ### pre-localnet
 
 - [x] compiles; 24/24 hermetic tests green (scratch copy with local `access_gate`) — CI `move-ci.yml`
-  fails until access-gate `8f38cfb` is pushed and `Move.lock` regenerated (F14)
+  fails until access-gate `22fe6d7` is pushed and `Move.lock` regenerated (F14)
 - [x] side-effect-freedom verified for all `seal_approve*`; every abort code tested
 - [x] `SECURITY.md` present and consistent with this audit
 
@@ -388,7 +388,7 @@ share; consumers: seal-ui discovery) — verifiers MUST NOT treat `publisher` or
 - **Upgrade authority:** until OQ3 executes, one key can change who can decrypt every ciphertext.
 - **Indefinite decryptability:** access cannot be revoked once a key is released (by design); a
   pause under `pause_blocks_decryption` stops only new key releases.
-- **Release coupling:** until access-gate `8f38cfb` is published and this package rebuilt, the source
+- **Release coupling:** until access-gate `22fe6d7` is published and this package rebuilt, the source
   cannot build from git (CI red) and the pause policy is not live.
 - **Discovery spoofing:** anyone can publish look-alike pointers; only UI filtering protects users.
 - **Cross-repo drift:** the identity layout is duplicated in two repos; the shared vector detects
@@ -400,10 +400,10 @@ share; consumers: seal-ui discovery) — verifiers MUST NOT treat `publisher` or
 
 - 2026-09-18 — first-pass baseline (8 → 12 tests; F1–F5; OQ1–OQ5).
 - 2026-09-28 — relocated to the package repo; re-verified under the updated template + Sui lens.
-  F1 upgraded to RESOLVED (tag found moved; SHA-pinned in `e45afb6`); F6, F7, F11 RESOLVED in
-  `e45afb6`; F9 RESOLVED in `e5dbcd5`; F8, F10, F12 added. 21/21 tests. On-chain reads: both testnet
+  F1 upgraded to RESOLVED (tag found moved; SHA-pinned in `434df4d`); F6, F7, F11 RESOLVED in
+  `434df4d`; F9 RESOLVED in `dd8fe36`; F8, F10, F12 added. 21/21 tests. On-chain reads: both testnet
   packages exist; `UpgradeCap 0x20de…` live (compatible) for `0x9f0563…`.
-- 2026-09-28 (second pass) — F14 (pause blocks decryption, per gate) RESOLVED in `f5f35dc`; F10
+- 2026-09-28 (second pass) — F14 (pause blocks decryption, per gate) RESOLVED in `53a0c95`; F10
   RESOLVED via F14; F8 RESOLVED (GraphQL reads: `0x9f0563…` links `0x0bedd0…`; `0x67520f…` embeds its
   own `access_gate`); owner answers to OQ3/OQ7 recorded; OQ8 added. 24/24 tests (scratch copy with a
   local `access_gate`).

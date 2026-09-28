@@ -28,7 +28,7 @@ mirrors one client provider 1:1.
   without touching `access_gate`.
 - **Move deps are git/local, never a registry.** `access_gate` is a git dependency pinned to an
   immutable **commit SHA** — never a mutable tag. The live `0x9f0563…` was built from `f191c2d…`
-  (→ `access_gate` `0x0bedd0…`); the source now pins `8f38cfb…` (GatePolicy), which must be
+  (→ `access_gate` `0x0bedd0…`); the source now pins `22fe6d7…` (GatePolicy), which must be
   published before this package is rebuilt. See the Move.toml comment and README.
 - **Pause may block decryption, per gate.** `nft_gate` aborts `E_GATE_PAUSED = 4` only when the
   gate's `GatePolicy.pause_blocks_decryption` is set and the gate is paused; otherwise a paused

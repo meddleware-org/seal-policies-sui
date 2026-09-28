@@ -6,7 +6,7 @@ title: Sealed Storage policies — on-chain API reference
 
 Package `seal_policies` (Move 2024). Depends on `access_gate`, pinned to a commit SHA. The live
 testnet package `0x9f0563…` was built against `f191c2d…` (→ `access_gate` `0x0bedd0…`, no gate
-policies); the source pins `8f38cfb…` (gate policies), which ships with the next access-gate
+policies); the source pins `22fe6d7…` (gate policies), which ships with the next access-gate
 publish. No `init`, no capabilities, no admin objects.
 
 ## `seal_policies::nft_gate` (policy)

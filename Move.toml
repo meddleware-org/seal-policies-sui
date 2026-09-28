@@ -15,11 +15,11 @@ license = "0BSD"
 # here (Sui CLI >= 1.80 rejects a duplicate). The rev is pinned to an immutable COMMIT SHA (never a
 # mutable tag — `v0.0.1` has already been moved).
 #
-# 8f38cfb is the access-gate source this package's `nft_gate` needs (GatePolicy /
+# 22fe6d7 is the access-gate source this package's `nft_gate` needs (GatePolicy /
 # `gate_pause_blocks_decryption`). It is NOT yet published: release order is (1) push + publish
 # access-gate-sui and record its Published.toml, (2) bump this rev to the commit that records that
 # publication, (3) rebuild (regenerates Move.lock) and publish this package. The live testnet
 # seal_policies 0x9f0563… was built from f191c2d (→ access_gate 0x0bedd0…).
 [dependencies]
-access_gate = { git = "https://github.com/meddleware-org/access-gate-sui.git", rev = "8f38cfba382af9349bb8c7907151bd94aacb0a49" }
+access_gate = { git = "https://github.com/meddleware-org/access-gate-sui.git", rev = "22fe6d750ce727dd6ecdcb83c2de50f88401eee2" }
 
