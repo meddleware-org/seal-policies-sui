@@ -1,0 +1,39 @@
+{
+  "name": "@meddleware/seal-policies-sui",
+  "version": "0.0.3",
+  "private": false,
+  "type": "module",
+  "author": "MeddleWare <meddleware@proton.me>",
+  "license": "0BSD",
+  "description": "Modular Seal access-control policies for Sui (Move source, canonical on-chain docs, and audit). Consumed by the docs./dev. sites at build time.",
+  "homepage": "https://github.com/meddleware-org/seal-policies-sui#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/meddleware-org/seal-policies-sui.git"
+  },
+  "bugs": {
+    "url": "https://github.com/meddleware-org/seal-policies-sui/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "sui move test --build-env testnet"
+  },
+  "exports": {
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "Move.toml",
+    "Move.lock",
+    "Published.toml",
+    "sources/",
+    "docs/",
+    "README.md",
+    "SECURITY.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": "^22.18.0 || >=24.12.0"
+  }
+}
