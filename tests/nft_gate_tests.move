@@ -87,7 +87,9 @@ fun conformance_gate_id_prefix_layout() {
         i = i + 1;
     };
 
-    // Property 2: the canonical right-aligned layout for the shared vector's gate id 0x123.
+    // Property 2: the framework's object-id byte encoding (the same one `assert_namespaced`
+    // compares against via `object::id_bytes`) yields the shared vector's prefix for 0x123:
+    // 30 zero bytes then 0x01, 0x23 — i.e. canonical big-endian, right-aligned.
     let expected_0x123 = {
         let mut v: vector<u8> = vector[];
         let mut j = 0u64;
@@ -96,8 +98,7 @@ fun conformance_gate_id_prefix_layout() {
         v.push_back(0x23);
         v
     };
-    assert!(expected_0x123.length() == 32, 299);
-    assert!(expected_0x123[30] == 0x01 && expected_0x123[31] == 0x23, 298);
+    assert!(object::id_from_address(@0x123).to_bytes() == expected_0x123, 299);
 
     ts::return_shared(gate);
     s.end();
@@ -234,3 +235,92 @@ fun approve_with_exhausted_pass_aborts() {
     ts::return_shared(gate);
     s.end();
 }
+
+// ── Soulbound variants of the abort paths ────────────────────────────────────────
+
+#[test]
+#[expected_failure(abort_code = 2)] // E_WRONG_GATE
+fun approve_soulbound_with_foreign_nft_aborts() {
+    let mut s = ts::begin(CREATOR);
+    make_gate(&mut s, true, 0);
+    s.next_tx(CREATOR);
+    let gate_a = s.take_shared<Gate>();
+    let cap = s.take_from_sender<AdminCap>();
+    access_gate::airdrop(&cap, &gate_a, HOLDER, s.ctx());
+    s.return_to_sender(cap);
+    ts::return_shared(gate_a);
+
+    s.next_tx(CREATOR);
+    make_gate(&mut s, true, 0); // gate B (newest shared)
+    s.next_tx(HOLDER);
+    let gate_b = s.take_shared<Gate>();
+    let nft = s.take_from_sender<SoulboundAccessNFT>();
+    nft_gate::seal_approve_soulbound(id_for(&gate_b), &gate_b, &nft); // NFT is gate A's
+    s.return_to_sender(nft);
+    ts::return_shared(gate_b);
+    s.end();
+}
+
+#[test]
+#[expected_failure(abort_code = 3)] // E_EXHAUSTED
+fun approve_soulbound_with_exhausted_pass_aborts() {
+    let mut s = ts::begin(CREATOR);
+    make_gate(&mut s, true, 1);
+    s.next_tx(CREATOR);
+    let gate = s.take_shared<Gate>();
+    let cap = s.take_from_sender<AdminCap>();
+    access_gate::airdrop(&cap, &gate, HOLDER, s.ctx());
+    s.return_to_sender(cap);
+
+    s.next_tx(HOLDER);
+    let nft = s.take_from_sender<SoulboundAccessNFT>();
+    access_gate::consume_soulbound(nft, &gate, b"nonce_suffix", s.ctx());
+    s.next_tx(HOLDER);
+    let spent = s.take_from_sender<SoulboundAccessNFT>();
+    nft_gate::seal_approve_soulbound(id_for(&gate), &gate, &spent);
+    s.return_to_sender(spent);
+    ts::return_shared(gate);
+    s.end();
+}
+
+#[test]
+fun approve_single_use_pass_with_uses_left_succeeds_without_consuming() {
+    // Membership semantics: approving does not spend a use (seal_approve is side-effect free).
+    let mut s = ts::begin(CREATOR);
+    make_gate(&mut s, false, 2);
+    s.next_tx(CREATOR);
+    let gate = s.take_shared<Gate>();
+    let cap = s.take_from_sender<AdminCap>();
+    access_gate::airdrop(&cap, &gate, HOLDER, s.ctx());
+    s.return_to_sender(cap);
+
+    s.next_tx(HOLDER);
+    let nft = s.take_from_sender<AccessNFT>();
+    nft_gate::seal_approve(id_for(&gate), &gate, &nft);
+    nft_gate::seal_approve(id_for(&gate), &gate, &nft);
+    assert!(access_gate::uses_remaining(&nft) == option::some(2), 0);
+    s.return_to_sender(nft);
+    ts::return_shared(gate);
+    s.end();
+}
+
+#[test]
+fun approve_on_paused_gate_still_succeeds() {
+    // Documents current behaviour (see audit OQ): pausing a gate stops purchases, not decryption.
+    let mut s = ts::begin(CREATOR);
+    make_gate(&mut s, false, 0);
+    s.next_tx(CREATOR);
+    let mut gate = s.take_shared<Gate>();
+    let cap = s.take_from_sender<AdminCap>();
+    access_gate::airdrop(&cap, &gate, HOLDER, s.ctx());
+    access_gate::set_paused(&cap, &mut gate, true);
+    s.return_to_sender(cap);
+
+    s.next_tx(HOLDER);
+    let nft = s.take_from_sender<AccessNFT>();
+    nft_gate::seal_approve(id_for(&gate), &gate, &nft);
+    s.return_to_sender(nft);
+    ts::return_shared(gate);
+    s.end();
+}
+

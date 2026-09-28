@@ -26,9 +26,9 @@ mirrors one client provider 1:1.
 - **`nft_gate` reuses `access_gate` unmodified.** It depends on the `access_gate` primitive (via
   `is_valid_for`) without changing it. `sealed_content` is an **additive** discovery registry, also
   without touching `access_gate`.
-- **Move deps are git/local, never a registry.** `access_gate` is a git dependency pinned to a tag
-  (`rev = "v0.0.2"`); that tag must exist on GitHub before this package builds. See the README's
-  dependency + publishing-order notes.
+- **Move deps are git/local, never a registry.** `access_gate` is a git dependency pinned to an
+  immutable **commit SHA** (`f191c2d…`, resolving to the canonical testnet `0x0bedd0…`) — never a
+  mutable tag. See the README's dependency notes.
 
 ## Layout
 
@@ -37,7 +37,7 @@ mirrors one client provider 1:1.
 | `sources/nft_gate.move` | `seal_approve` / `seal_approve_soulbound` — gate-pass membership policy. |
 | `sources/timelock.move` | `seal_approve` — Clock-based time-lock (`0x6`). |
 | `sources/sealed_content.move` | `publish(...)` + `SealedContentPublished` event — discovery pointers (not a policy). |
-| `tests/*` | 8 unit tests (nft_gate + timelock). Run `sui move test`. |
+| `tests/*` | 21 unit tests (nft_gate + timelock + sealed_content). Run `sui move test`. |
 | `Move.toml` / `Published.toml` | Package manifest + recorded publish. |
 
 The full module/identity/roadmap tables live in [README.md](README.md) — keep the two in sync.

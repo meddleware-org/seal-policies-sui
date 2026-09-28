@@ -58,29 +58,33 @@ module with its own `seal_approve*`; none changes the existing modules:
 
 ```bash
 sui move build
-sui move test        # 8 unit tests (nft_gate + timelock)
+sui move test        # 21 unit tests (nft_gate + timelock + sealed_content)
 ```
 
 ## Deployments
 
 | Network | Package ID |
 | --- | --- |
-| testnet | `0x9f0563bfe42fbd29932cd280cc47efe17f5339b4dc569eb110114665eecc231e` |
+| testnet | `0x9f0563bfe42fbd29932cd280cc47efe17f5339b4dc569eb110114665eecc231e` (used by `seal-ui` and `seal-client` tests; `Published.toml`) |
 | mainnet | — (pending) |
+
+A second testnet deployment, `0x67520f80…88d3`, is recorded as `published-at` in `Move.toml`; which
+of the two is canonical is an open question in [the audit](docs/audit/seal-policies-sui-audit.md).
 
 ## Dependency on `access-gate-sui`
 
-`access_gate` is a **git dependency pinned to a tag** — Move packages are consumed via git or local
-paths, never a package registry (there is no crates.io for Move):
+`access_gate` is a **git dependency pinned to an immutable commit SHA** — Move packages are consumed
+via git or local paths, never a package registry (there is no crates.io for Move). A tag is **not**
+used because tags are mutable (`v0.0.1` has already been moved to a different commit):
 
 ```toml
 [dependencies]
-access_gate = { git = "https://github.com/meddleware-org/access-gate-sui.git", rev = "v0.0.2" }
+access_gate = { git = "https://github.com/meddleware-org/access-gate-sui.git", rev = "f191c2d338006c056d4ecfafa9bb0404afed37a5" }
 ```
 
-`access-gate-sui`'s own `published-at` resolves `access_gate` to its on-chain address, so no address
-override is needed here. **Publishing order matters:** the `access-gate-sui` `v0.0.2` tag must exist
-on GitHub before this package builds — the git dependency is fetched at that rev.
+That commit's manifest resolves `access_gate` to the canonical testnet package `0x0bedd0…`, which the
+published `seal_policies` links against (the live access-gate objects are of that package's types).
+Change the rev only together with the address it resolves to, and re-publish if that address changes.
 
 ## Deploy
 

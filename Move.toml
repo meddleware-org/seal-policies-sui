@@ -10,8 +10,10 @@ published-at = "0x67520f808bd47014c813841d654e2863619628db598c5943cc67f463466088
 # is NOT modified by this package — we only read its `Gate` / access-NFT verifiers.
 #
 # The dependency's own manifest defines the `access_gate` named address; do not redeclare it
-# here (Sui CLI >= 1.80 rejects a duplicate). Move.lock pins the revision that resolves it to
-# the canonical testnet access_gate 0x0bedd0…, which the published seal_policies links against.
+# here (Sui CLI >= 1.80 rejects a duplicate). The rev is pinned to an immutable COMMIT SHA (not a
+# tag — tags are mutable, and `v0.0.1` has been moved): f191c2d is the revision whose manifest
+# resolves `access_gate` to the canonical testnet package 0x0bedd0…, which the published
+# seal_policies links against. Bump deliberately, together with the address it resolves to.
 [dependencies]
-access_gate = { git = "https://github.com/meddleware-org/access-gate-sui.git", rev = "v0.0.1" }
+access_gate = { git = "https://github.com/meddleware-org/access-gate-sui.git", rev = "f191c2d338006c056d4ecfafa9bb0404afed37a5" }
 

@@ -39,6 +39,19 @@ treated as high severity:
 5. **Malformed identity input aborts cleanly.** Length guards precede all indexing; a short or
    malformed identity aborts rather than reading out of bounds.
 
+Known, intentional properties (not vulnerabilities):
+
+- **`sealed_content::publish` is permissionless and is not a policy.** Anyone can publish a pointer
+  under any `gate_id` (existence and admin rights are not checked), with any label. Pointers grant
+  nothing — decryption still requires `nft_gate::seal_approve*` to pass — but discovery UIs must not
+  trust labels or publishers.
+- **Membership, not consumption.** A valid pass authorises decryption repeatedly; once a key is
+  released the content stays decryptable by that holder indefinitely. Pausing or freezing the gate
+  does not revoke decryption for existing passes.
+- **Upgrade authority.** The testnet package `0x9f0563…` still has a live `UpgradeCap`
+  (`0x20de324f…a1a0`); burning it or moving it to a multisig is a pre-mainnet gate in the audit
+  (`docs/audit/seal-policies-sui-audit.md`).
+
 ## Supported versions
 
 Only the latest published package receives security fixes.
