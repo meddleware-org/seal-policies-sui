@@ -369,7 +369,7 @@ share; consumers: seal-ui discovery) — verifiers MUST NOT treat `publisher` or
    now the documented convention for every Move dependency across the org?
 2. **OQ2** *(first pass — intent confirmed: membership, indefinite decryptability)* Should operators be
    offered a policy that bounds decryptions (would need an on-chain, non-dry-run mechanism)?
-3. **OQ3** Burn or multisig for the `UpgradeCap` — on testnet now, and at mainnet publish?
+3. **OQ3** Burn or multisig for the `UpgradeCap` — on testnet now, and at mainnet publish? *(2026-09-28, owner: design as if a multisig holds authority — for now a single key. New versions with crucial changes stay upgradeable under that authority while being tested; once ready for regular users the same authority burns the cap. No burn yet unless the cap goes stale.)*
    *(2026-09-28, owner: undecided; multisig to be configured later — recorded as an operator
    requirement before launch.)*
 4. **OQ4** Keep `sealed_content::publish` permissionless for launch, or add a curated variant?
