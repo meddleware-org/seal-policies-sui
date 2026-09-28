@@ -36,6 +36,41 @@ read_upgrade_cap() {
   ' "$PUBLISHED_TOML"
 }
 
+# Extract `published-at` (this package's id) from the same Published.toml section.
+read_package_id() {
+  awk -v section="[published.${NETWORK}]" '
+    $0 == section { in_section = 1; next }
+    /^\[/         { in_section = 0 }
+    in_section && /^[[:space:]]*published-at[[:space:]]*=/ {
+      gsub(/.*=[[:space:]]*"/, ""); gsub(/".*/, ""); print; exit
+    }
+  ' "$PUBLISHED_TOML"
+}
+
+long_addr() { local h="${1#0x}"; printf '0x%064s' "${h,,}" | tr ' ' 0; }
+
+# Refuse to act unless the active env is NETWORK and UPGRADE_CAP_ID is an UpgradeCap for THIS
+# package (Published.toml published-at, or PACKAGE_ID override) owned by the active address. The
+# same deploy key may hold other packages' UpgradeCaps — never burn/transfer the wrong one.
+verify_upgrade_cap() {
+  local active_env pkg json typ owner cap_pkg
+  active_env="$(sui client active-env 2>/dev/null || true)"
+  [ "$active_env" = "$NETWORK" ] || { log "ERROR: active Sui env is '$active_env', expected '$NETWORK'."; exit 1; }
+  pkg="${PACKAGE_ID:-$(read_package_id)}"
+  [ -n "$pkg" ] || { log "ERROR: cannot determine this package's id (Published.toml published-at or PACKAGE_ID)."; exit 1; }
+  json="$(sui client object "$UPGRADE_CAP_ID" --json 2>/dev/null)" || { log "ERROR: UpgradeCap $UPGRADE_CAP_ID not found on $NETWORK (already burned?)."; exit 1; }
+  typ="$(jq -r '.objType // empty' <<<"$json")"
+  owner="$(jq -r '.owner.AddressOwner // empty' <<<"$json")"
+  cap_pkg="$(jq -r '.content.package // empty' <<<"$json")"
+  [ "$typ" = "0x0000000000000000000000000000000000000000000000000000000000000002::package::UpgradeCap" ] \
+    || { log "ERROR: $UPGRADE_CAP_ID is a '$typ', not an UpgradeCap."; exit 1; }
+  [ "$(long_addr "$cap_pkg")" = "$(long_addr "$pkg")" ] \
+    || { log "ERROR: UpgradeCap $UPGRADE_CAP_ID controls package $cap_pkg, not seal_policies $pkg."; exit 1; }
+  [ "$(long_addr "$owner")" = "$(long_addr "$(sui client active-address)")" ] \
+    || { log "ERROR: UpgradeCap $UPGRADE_CAP_ID is owned by '${owner:-<not address-owned>}', not the active address."; exit 1; }
+  log "Verified     : UpgradeCap for seal_policies $pkg, owned by the active address"
+}
+
 UPGRADE_CAP_ID="${UPGRADE_CAP_ID:-}"
 if [ -z "$UPGRADE_CAP_ID" ]; then
   if [ ! -f "$PUBLISHED_TOML" ]; then
@@ -54,6 +89,7 @@ fi
 log "Network      : $NETWORK"
 log "UpgradeCap   : $UPGRADE_CAP_ID"
 log "Dry run      : $DRY_RUN"
+verify_upgrade_cap
 log ""
 log "WARNING: make_immutable is PERMANENTLY IRREVERSIBLE. The seal_policies package can never be"
 log "         upgraded again; future changes must ship as a NEW package at a new address, and every"
@@ -76,4 +112,10 @@ sui client call --json --gas-budget "$GAS_BUDGET" \
   --package 0x2 --module package --function make_immutable \
   --args "$UPGRADE_CAP_ID"
 
-log "Package is now permanently immutable. Remove/annotate the upgrade-capability in Published.toml."
+# The UpgradeCap being consumed is the only proof of immutability (a package object is always
+# "Immutable"-owned).
+if sui client object "$UPGRADE_CAP_ID" --json >/dev/null 2>&1; then
+  log "ERROR: UpgradeCap $UPGRADE_CAP_ID still exists after make_immutable."
+  exit 1
+fi
+log "Package is now permanently immutable (UpgradeCap consumed). Remove/annotate the upgrade-capability in Published.toml."
