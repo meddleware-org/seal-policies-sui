@@ -155,6 +155,19 @@ pass authorises decryption repeatedly and a released key stays usable;
 `approve_single_use_pass_with_uses_left_succeeds_without_consuming` pins it. Documented in
 `SECURITY.md` and the user guide.
 
+### F13 — docs./dev. sites import the canonical on-chain docs only after npm publication
+**Severity:** Info   **Disposition:** DEFERRED (exact remediation below)
+**Where:** `repos/docs` and `repos/dev` — `scripts/gen-onchain.mjs` resolves `@meddleware/seal-policies-sui` from
+`node_modules`.
+**Issue:** the canonical `docs/onchain/*` pages ship in `@meddleware/seal-policies-sui` from version `0.0.3`. Until
+that version is on npm and installed in both sites, their builds render placeholder pages for this
+package (by design — builds never fail). Verified locally with `ONCHAIN_DOCS_ROOT=..` (all pages
+imported, no dead links, lint/type-check green).
+**Remediation:** publish `@meddleware/seal-policies-sui@0.0.3` (push the release tag; `npm-publish.yml`), then in both
+`repos/docs` and `repos/dev`: `npm install -D @meddleware/seal-policies-sui@0.0.3` → commit `package.json` +
+`package-lock.json` → `npm run build` and confirm the `[gen:onchain]` log shows imported pages
+(no placeholder) → release the site images.
+
 ---
 
 ## Section A — Invariant verification matrix
@@ -262,6 +275,7 @@ share; consumers: seal-ui discovery) — verifiers MUST NOT treat `publisher` or
 
 ### pre-testnet
 
+- [ ] docs./dev. sites install the published `@meddleware/seal-policies-sui` and import its on-chain docs — F13
 - [x] published — `0x9f0563…` (and `0x67520f…`)
 - [ ] package ID recorded consistently across `Move.toml` / `Published.toml` / consumers — F8 (OQ6)
 - [x] dependency pinned to a commit SHA; lockfile committed — F1
