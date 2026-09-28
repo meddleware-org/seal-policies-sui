@@ -147,7 +147,7 @@ the cap to be gone. Dry-run against testnet: seal cap verified; access-gate's ca
 ### F11 — Documentation drift
 **Severity:** Info   **Disposition:** RESOLVED — README/CLAUDE said 8 tests and a tag rev; the dev
 site documented non-existent modules (`nft_gate_policy::create`, `approve`); now canonical
-`docs/onchain/*` consumed by both sites.
+`docs/onchain/*` consumed by both sites — docs `e311020`, dev `19499e0` (policy guide rewritten).
 
 ### F12 — Membership, not consumption
 **Severity:** Info   **Disposition:** ADJUDICATED (first-pass OQ2 intent confirmed) — a single-use
