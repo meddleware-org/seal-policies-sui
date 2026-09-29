@@ -88,8 +88,8 @@ access_gate = { git = "https://github.com/meddleware-org/access-gate-sui.git", r
 
 That commit records the testnet publication of `access_gate` `0x1a81ca…` (its `Published.toml`), which
 the published `seal_policies` links against. Change the rev only together with the address it
-resolves to, and re-publish if that address changes. `Move.lock` is regenerated once the pinned
-commit is on GitHub (`sui move build --build-env testnet`).
+resolves to, and re-publish if that address changes; after changing it, regenerate `Move.lock`
+(`sui move build --build-env testnet`) and commit it.
 
 ## Deploy
 

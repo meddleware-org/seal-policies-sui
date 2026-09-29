@@ -17,9 +17,7 @@ license = "0BSD"
 # mutable tag — `v0.0.1` has already been moved).
 #
 # dcd2d3c is the access-gate commit that records the testnet publication 0x1a81ca… (Published.toml)
-# this package was published against. Move.lock still pins the previous rev until that commit is on
-# GitHub: after pushing access-gate-sui, run `sui move build --build-env testnet` here and commit
-# the regenerated Move.lock (CI fails until then).
+# this package was published against; Move.lock pins the same commit.
 [dependencies]
 access_gate = { git = "https://github.com/meddleware-org/access-gate-sui.git", rev = "dcd2d3c2f918904950e8cb079d0c648fc79475f3" }
 

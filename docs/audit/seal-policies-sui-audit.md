@@ -185,8 +185,7 @@ cannot revoke). **Evidence:** `approve_denied_while_paused_when_policy_blocks_de
 (24/24).
 **Release (done 2026-09-28):** access_gate published as `0x1a81ca…` (`dcd2d3c`), this package
 published against it as `0x42cc18…` (`5830687`; linkage verified via GraphQL), and seal-ui / seal-client
-defaults updated. Outstanding: `Move.lock` still pins `f191c2d` until `dcd2d3c` is pushed and the lock
-regenerated (CI fails until then). The testnet time-lock round-trip against `0x42cc18…` passes
+defaults updated; `Move.lock` pins `dcd2d3c` (`32c8978`). The testnet time-lock round-trip against `0x42cc18…` passes
 (`seal-client` integration, real key servers).
 
 ### F13 — docs./dev. sites import the canonical on-chain docs only after npm publication
@@ -305,8 +304,7 @@ share; consumers: seal-ui discovery) — verifiers MUST NOT treat `publisher` or
 
 ### pre-localnet
 
-- [x] compiles; 24/24 hermetic tests green (scratch copy with local `access_gate`) — CI `move-ci.yml`
-  fails until access-gate `22fe6d7` is pushed and `Move.lock` regenerated (F14)
+- [x] compiles; 24/24 hermetic tests green against the pinned git dependency (F14)
 - [x] side-effect-freedom verified for all `seal_approve*`; every abort code tested
 - [x] `SECURITY.md` present and consistent with this audit
 
@@ -316,7 +314,7 @@ share; consumers: seal-ui discovery) — verifiers MUST NOT treat `publisher` or
 - [x] published — `0x42cc18…` against access_gate `0x1a81ca…` (strays and superseded immutable)
 - [x] package ID recorded consistently across `Move.toml` / `Published.toml` / consumers — F8
 - [x] republished after access-gate (F14); seal-ui / seal-client defaults updated
-- [ ] push access-gate-sui, then regenerate `Move.lock` here
+- [x] push access-gate-sui, then regenerate `Move.lock` here (`32c8978`, pins `dcd2d3c`)
 - [x] dependency pinned to a commit SHA; lockfile committed — F1
 - [x] identity-layout conformance vector green on both sides — F2/F7
 - [x] custody tooling with dry-run default, confirmation and on-chain verification — F9
@@ -416,3 +414,5 @@ share; consumers: seal-ui discovery) — verifiers MUST NOT treat `publisher` or
   linkage verified); tests updated for the new access_gate ABI (24/24, scratch copy with a local
   `access_gate`); seal timelock integration passes on testnet against the new package; OQ8 answered
   (stray and superseded caps burned).
+- 2026-09-29 — `Move.lock` pins `dcd2d3c` (`32c8978`); `sui move build`/`test --build-env testnet`
+  resolve the git dependency without changing the lock; 24/24 tests against it (no scratch copy).
