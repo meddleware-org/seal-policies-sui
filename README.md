@@ -98,6 +98,21 @@ Because the on-chain address of `access_gate` is identical whether resolved via 
 a package already deployed (see Deployments above) does **not** need re-publishing after switching the
 dependency form — only `Move.lock` changes.
 
+## Operations runbook (UpgradeCap custody)
+
+Pick **one** custody option per network. Both scripts are dry-run by default, verify that the cap
+is this package's UpgradeCap owned by the active address, and run the same preflight as
+`access-gate-sui` (active env = `NETWORK`, chain identifier, CLI major.minor vs `Published.toml`
+`toolchain-version`, `MAINNET_CONFIRM=1` for mainnet; a skipped run exits `78`).
+
+| Script | Effect | Dry run | Execute | Recovery |
+| --- | --- | --- | --- | --- |
+| `scripts/make-immutable.sh` | Burn the UpgradeCap: the policy package can never change (future changes ship as a new package) | `NETWORK=testnet bash scripts/make-immutable.sh` | `DRY_RUN=0 …` then `YES` | Irreversible. The script checks afterwards that the cap is gone; remove `upgrade-capability` from `Published.toml` |
+| `scripts/transfer-upgrade-cap.sh` | Move the UpgradeCap to a multisig (upgrades need M-of-N) | `NETWORK=testnet MULTISIG_ADDRESS=0x… bash scripts/transfer-upgrade-cap.sh` | `DRY_RUN=0 …` then `YES` | Record the multisig as the cap owner; a re-run refuses once the active address no longer owns the cap |
+
+Until a custody option is executed, the deploy key can upgrade `seal_policies` and thereby change
+who can decrypt existing ciphertexts (the Seal identity namespace is the package).
+
 ## License
 
 BSD Zero Clause License (`0BSD`). See [LICENSE](LICENSE).

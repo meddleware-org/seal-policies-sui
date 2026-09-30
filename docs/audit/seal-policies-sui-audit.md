@@ -416,3 +416,12 @@ share; consumers: seal-ui discovery) — verifiers MUST NOT treat `publisher` or
   (stray and superseded caps burned).
 - 2026-09-29 — `Move.lock` pins `dcd2d3c` (`32c8978`); `sui move build`/`test --build-env testnet`
   resolve the git dependency without changing the lock; 24/24 tests against it (no scratch copy).
+- 2026-09-30 — hardening from the workspace lens grounding (decision D9, uncommitted):
+  `sealed_content::publish` bounds `label` ≤ 256, `blob_id` ≤ 128 and `seal_id` ≤ 256 bytes
+  (`E_LABEL_TOO_LONG = 1`, `E_BLOB_ID_TOO_LONG = 2`, `E_SEAL_ID_TOO_LONG = 3`), narrowing the
+  spam surface in the Section B row for `publish` (unbounded strings in every
+  `SealedContentPublished` event). Boundary and over-limit tests added: 28/28. The change is
+  upgrade-compatible and ships in the next patch upgrade (the active testnet address still owns
+  `UpgradeCap 0x0ff7fa…`, verified by a `make-immutable.sh` dry run). `@meddleware/seal-client`
+  mirrors the limits client-side (`SEALED_CONTENT_LIMITS`). The custody scripts gained the
+  chain-id / CLI-version / mainnet preflight; README gained the operations runbook.

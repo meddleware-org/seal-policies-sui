@@ -30,6 +30,9 @@ mirrors one client provider 1:1.
   immutable **commit SHA** — never a mutable tag. The testnet `0x42cc18…` links `access_gate`
   `0x1a81ca…`, pinned to `dcd2d3c…` (the commit recording that publication). See the Move.toml
   comment and README.
+- **`sealed_content::publish` bounds its strings** (`label` ≤ 256, `blob_id` ≤ 128, `seal_id` ≤ 256
+  bytes; abort codes 1–3). `@meddleware/seal-client` mirrors the limits (`SEALED_CONTENT_LIMITS`) —
+  change both together.
 - **Pause may block decryption, per gate.** `nft_gate` aborts `E_GATE_PAUSED = 4` only when the
   gate's `GatePolicy.pause_blocks_decryption` is set and the gate is paused; otherwise a paused
   gate still decrypts (pause stops purchases only).
@@ -41,7 +44,7 @@ mirrors one client provider 1:1.
 | `sources/nft_gate.move` | `seal_approve` / `seal_approve_soulbound` — gate-pass membership policy. |
 | `sources/timelock.move` | `seal_approve` — Clock-based time-lock (`0x6`). |
 | `sources/sealed_content.move` | `publish(...)` + `SealedContentPublished` event — discovery pointers (not a policy). |
-| `tests/*` | 24 unit tests (nft_gate + timelock + sealed_content). Run `sui move test`. |
+| `tests/*` | 28 unit tests (nft_gate + timelock + sealed_content, incl. the string-length bounds). Run `sui move test --build-env testnet`. |
 | `Move.toml` / `Published.toml` | Package manifest + recorded publish. |
 
 The full module/identity/roadmap tables live in [README.md](README.md) — keep the two in sync.

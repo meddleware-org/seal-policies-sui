@@ -1,7 +1,7 @@
 [package]
 edition = "2024"
 name = "seal_policies"
-version = "0.0.3"
+version = "0.0.4"
 license = "0BSD"
 # No `published-at`: the testnet package 0x42cc181f…d612 (linking access_gate 0x1a81ca17…eea4) is
 # recorded in Published.toml (Sui >= 1.80). Superseded: 0x9f0563bf…231e (linked access_gate

@@ -52,10 +52,31 @@ long_addr() { local h="${1#0x}"; printf '0x%064s' "${h,,}" | tr ' ' 0; }
 # Refuse to act unless the active env is NETWORK and UPGRADE_CAP_ID is an UpgradeCap for THIS
 # package (Published.toml published-at, or PACKAGE_ID override) owned by the active address. The
 # same deploy key may hold other packages' UpgradeCaps — never burn/transfer the wrong one.
+# ── Preflight (hard failures before anything is signed; same rules as access-gate-sui publish.sh) ──
+# The active env must be NETWORK; testnet/mainnet must report their chain identifier; the CLI
+# major.minor must match Published.toml `toolchain-version`; mainnet needs MAINNET_CONFIRM=1.
+preflight() {
+  local published_toml="$1" env chain want tool cli
+  env="$(sui client active-env 2>/dev/null || true)"
+  [ "$env" = "$NETWORK" ] || { echo "ERROR: active Sui env is '${env:-<none>}', expected '$NETWORK' (sui client switch --env $NETWORK)." >&2; exit 1; }
+  case "$NETWORK" in testnet) want=4c78adac ;; mainnet) want=35834a8a ;; *) want="" ;; esac
+  if [ -n "$want" ]; then
+    chain="$(sui client chain-identifier 2>/dev/null | awk '/^Hex:/{print $2; exit} !/:/{print $1; exit}')"
+    [ "$chain" = "$want" ] || { echo "ERROR: chain identifier is '${chain:-<unreachable>}', expected $want for $NETWORK." >&2; exit 1; }
+  fi
+  tool="$(awk -v s="[published.$NETWORK]" '$0==s{f=1;next} /^\[/{f=0} f && /^toolchain-version/{gsub(/.*= *"|".*/,"");print;exit}' "$published_toml" 2>/dev/null || true)"
+  cli="$(sui --version | awk '{print $2}' | cut -d- -f1)"
+  if [ -n "$tool" ] && [ "${cli%.*}" != "${tool%.*}" ]; then
+    echo "ERROR: sui CLI $cli does not match Published.toml toolchain-version $tool (major.minor)." >&2; exit 1
+  fi
+  if [ "$NETWORK" = "mainnet" ] && [ "${MAINNET_CONFIRM:-}" != "1" ]; then
+    echo "SKIPPED: mainnet — re-run with MAINNET_CONFIRM=1 to proceed." >&2; exit 78
+  fi
+}
+
 verify_upgrade_cap() {
-  local active_env pkg json typ owner cap_pkg
-  active_env="$(sui client active-env 2>/dev/null || true)"
-  [ "$active_env" = "$NETWORK" ] || { log "ERROR: active Sui env is '$active_env', expected '$NETWORK'."; exit 1; }
+  local pkg json typ owner cap_pkg
+  preflight "$PUBLISHED_TOML"
   pkg="${PACKAGE_ID:-$(read_package_id)}"
   [ -n "$pkg" ] || { log "ERROR: cannot determine this package's id (Published.toml published-at or PACKAGE_ID)."; exit 1; }
   json="$(sui client object "$UPGRADE_CAP_ID" --json 2>/dev/null)" || { log "ERROR: UpgradeCap $UPGRADE_CAP_ID not found on $NETWORK (already burned?)."; exit 1; }

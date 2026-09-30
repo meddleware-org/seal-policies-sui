@@ -55,3 +55,48 @@ fun publish_is_permissionless_and_unvalidated() {
     ts::return_shared(c);
     s.end();
 }
+
+/// `n` copies of the byte `b`, as a String.
+fun repeat(b: u8, n: u64): std::string::String {
+    let mut v = vector[];
+    n.do!(|_| v.push_back(b));
+    v.to_string()
+}
+
+#[test]
+fun accepts_fields_at_their_limits() {
+    let mut s = ts::begin(PUBLISHER);
+    sealed_content::publish(
+        object::id_from_address(@0x123),
+        repeat(0x62, 128),
+        repeat(0x73, 256),
+        repeat(0x6c, 256),
+        s.ctx(),
+    );
+    s.next_tx(PUBLISHER);
+    let c = s.take_shared<SealedContent>();
+    assert!(c.label().length() == 256, 0);
+    ts::return_shared(c);
+    s.end();
+}
+
+#[test, expected_failure(abort_code = sealed_content::E_LABEL_TOO_LONG)]
+fun rejects_a_label_over_the_limit() {
+    let mut s = ts::begin(PUBLISHER);
+    sealed_content::publish(object::id_from_address(@0x123), b"b".to_string(), b"s".to_string(), repeat(0x6c, 257), s.ctx());
+    s.end();
+}
+
+#[test, expected_failure(abort_code = sealed_content::E_BLOB_ID_TOO_LONG)]
+fun rejects_a_blob_id_over_the_limit() {
+    let mut s = ts::begin(PUBLISHER);
+    sealed_content::publish(object::id_from_address(@0x123), repeat(0x62, 129), b"s".to_string(), b"l".to_string(), s.ctx());
+    s.end();
+}
+
+#[test, expected_failure(abort_code = sealed_content::E_SEAL_ID_TOO_LONG)]
+fun rejects_a_seal_id_over_the_limit() {
+    let mut s = ts::begin(PUBLISHER);
+    sealed_content::publish(object::id_from_address(@0x123), b"b".to_string(), repeat(0x73, 257), b"l".to_string(), s.ctx());
+    s.end();
+}

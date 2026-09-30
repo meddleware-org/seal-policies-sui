@@ -16,6 +16,22 @@ module seal_policies::sealed_content;
 use std::string::String;
 use sui::event;
 
+/// Longest accepted `label` (bytes). Labels are shown in unlock UIs and copied into every
+/// `SealedContentPublished` event, so an unbounded one only costs indexers and viewers.
+const MAX_LABEL_BYTES: u64 = 256;
+/// Longest accepted `blob_id` (bytes). A Walrus blob id is 43 base64url characters.
+const MAX_BLOB_ID_BYTES: u64 = 128;
+/// Longest accepted `seal_id` (bytes). The largest identity here (nft-gate: 48 bytes) is 98 hex
+/// characters with the `0x` prefix.
+const MAX_SEAL_ID_BYTES: u64 = 256;
+
+/// `label` exceeds `MAX_LABEL_BYTES`.
+const E_LABEL_TOO_LONG: u64 = 1;
+/// `blob_id` exceeds `MAX_BLOB_ID_BYTES`.
+const E_BLOB_ID_TOO_LONG: u64 = 2;
+/// `seal_id` exceeds `MAX_SEAL_ID_BYTES`.
+const E_SEAL_ID_TOO_LONG: u64 = 3;
+
 /// A public pointer binding an encrypted Walrus blob to a gate.
 public struct SealedContent has key, store {
     id: UID,
@@ -42,7 +58,8 @@ public struct SealedContentPublished has copy, drop {
 }
 
 /// Publish a sealed-content pointer for `gate_id`. Permissionless — the ciphertext is already
-/// gated by Seal, so a pointer grants nothing on its own.
+/// gated by Seal, so a pointer grants nothing on its own. The three strings are length-bounded
+/// (`E_LABEL_TOO_LONG` / `E_BLOB_ID_TOO_LONG` / `E_SEAL_ID_TOO_LONG`).
 entry fun publish(
     gate_id: ID,
     blob_id: String,
@@ -50,6 +67,9 @@ entry fun publish(
     label: String,
     ctx: &mut TxContext,
 ) {
+    assert!(label.length() <= MAX_LABEL_BYTES, E_LABEL_TOO_LONG);
+    assert!(blob_id.length() <= MAX_BLOB_ID_BYTES, E_BLOB_ID_TOO_LONG);
+    assert!(seal_id.length() <= MAX_SEAL_ID_BYTES, E_SEAL_ID_TOO_LONG);
     let content = SealedContent {
         id: object::new(ctx),
         gate_id,
