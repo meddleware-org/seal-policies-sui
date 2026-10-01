@@ -60,15 +60,18 @@ module with its own `seal_approve*`; none changes the existing modules:
 
 ```bash
 sui move build
-sui move test        # 24 unit tests (nft_gate + timelock + sealed_content)
+sui move test        # 28 unit tests (nft_gate + timelock + sealed_content)
 ```
 
 ## Deployments
 
-| Network | Package ID |
-| --- | --- |
-| testnet | `0x42cc181f851ef702c1fddc9b925553f03b71784edff49d80fbc260055f86d612` (links `access_gate` `0x1a81ca…`; `Published.toml`) |
-| mainnet | — (pending) |
+| Network | Original id (types, events, Seal identity namespace) | Published-at (call targets) |
+| --- | --- | --- |
+| testnet | `0x42cc181f851ef702c1fddc9b925553f03b71784edff49d80fbc260055f86d612` | `0x8fcf9c39f35880c923fe811d7566d3f0352fc8b1d1c2652cac711810cb1f15cb` (v2, 2026-10-01: `sealed_content` string bounds, D9) |
+| mainnet | — (pending) | — |
+
+Both link `access_gate` `0x1a81ca…`; `Published.toml` is the source of truth. Encrypt under the
+original id and call `seal_approve` / `publish` at published-at.
 
 Superseded: `0x9f0563bf…231e` (linked the pre-policy `access_gate` `0x0bedd0…`; UpgradeCap burned).
 Strays `0x67520f80…88d3` and `0x882fcc68…e8cc` bundle their own copy of the `access_gate` module, so
