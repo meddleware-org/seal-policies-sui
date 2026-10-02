@@ -7,6 +7,7 @@
 module seal_policies::nft_gate_tests;
 
 use access_gate::access_gate::{Self, Gate, AdminCap, AccessNFT, SoulboundAccessNFT, GatePolicy, PlatformConfig};
+use seal_policies::config;
 use seal_policies::nft_gate;
 use sui::coin;
 use sui::sui::SUI;
@@ -38,6 +39,46 @@ fun grant(s: &mut ts::Scenario, cap: &AdminCap, gate: &Gate, recipient: address)
     ts::return_shared(platform);
 }
 
+// access_gate calls that need the shared PlatformConfig (its version gate). A shared object can be
+// taken once per test transaction, so the airdrop and the pause toggles share one borrow.
+fun grant_then_set_paused(
+    s: &mut ts::Scenario,
+    cap: &AdminCap,
+    gate: &mut Gate,
+    recipient: address,
+    states: vector<bool>,
+) {
+    let platform = s.take_shared<PlatformConfig>();
+    access_gate::airdrop(cap, gate, &platform, coin::mint_for_testing<SUI>(0, s.ctx()), recipient, s.ctx());
+    states.do!(|paused| access_gate::set_paused(cap, gate, &platform, paused));
+    ts::return_shared(platform);
+}
+
+fun consume_t(s: &mut ts::Scenario, nft: AccessNFT, gate: &Gate) {
+    let platform = s.take_shared<PlatformConfig>();
+    access_gate::consume(nft, gate, &platform, b"nonce_suffix", s.ctx());
+    ts::return_shared(platform);
+}
+
+fun consume_soulbound_t(s: &mut ts::Scenario, nft: SoulboundAccessNFT, gate: &Gate) {
+    let platform = s.take_shared<PlatformConfig>();
+    access_gate::consume_soulbound(nft, gate, &platform, b"nonce_suffix", s.ctx());
+    ts::return_shared(platform);
+}
+
+// Call a policy with a fresh current-version PolicyConfig (the version gate is tested in config_tests).
+fun approve(s: &mut ts::Scenario, id: vector<u8>, gate: &Gate, nft: &AccessNFT) {
+    let policy = config::new_for_testing(s.ctx());
+    nft_gate::seal_approve(id, &policy, gate, nft);
+    config::destroy_for_testing(policy);
+}
+
+fun approve_soulbound(s: &mut ts::Scenario, id: vector<u8>, gate: &Gate, nft: &SoulboundAccessNFT) {
+    let policy = config::new_for_testing(s.ctx());
+    nft_gate::seal_approve_soulbound(id, &policy, gate, nft);
+    config::destroy_for_testing(policy);
+}
+
 // A valid identity: the 32-byte gate id followed by a nonce suffix byte.
 fun id_for(gate: &Gate): vector<u8> {
     let mut id = object::id_bytes(gate);
@@ -57,7 +98,7 @@ fun approve_unlimited_pass_succeeds() {
 
     s.next_tx(HOLDER);
     let nft = s.take_from_sender<AccessNFT>();
-    nft_gate::seal_approve(id_for(&gate), &gate, &nft);
+    approve(&mut s, id_for(&gate), &gate, &nft);
     s.return_to_sender(nft);
 
     ts::return_shared(gate);
@@ -76,7 +117,7 @@ fun approve_soulbound_pass_succeeds() {
 
     s.next_tx(HOLDER);
     let nft = s.take_from_sender<SoulboundAccessNFT>();
-    nft_gate::seal_approve_soulbound(id_for(&gate), &gate, &nft);
+    approve_soulbound(&mut s, id_for(&gate), &gate, &nft);
     s.return_to_sender(nft);
 
     ts::return_shared(gate);
@@ -150,7 +191,7 @@ fun approve_with_foreign_nft_aborts() {
         (&gate_a, &gate_b)
     };
     let _ = other;
-    nft_gate::seal_approve(id_for(target), target, &nft); // aborts E_WRONG_GATE
+    approve(&mut s, id_for(target), target, &nft); // aborts E_WRONG_GATE
 
     s.return_to_sender(nft);
     ts::return_shared(gate_a);
@@ -175,7 +216,7 @@ fun approve_with_wrong_namespace_aborts() {
     let mut bad: vector<u8> = vector[];
     let mut i = 0u64;
     while (i < 33) { bad.push_back(0u8); i = i + 1; };
-    nft_gate::seal_approve(bad, &gate, &nft); // aborts E_ID_NOT_NAMESPACED
+    approve(&mut s, bad, &gate, &nft); // aborts E_ID_NOT_NAMESPACED
 
     s.return_to_sender(nft);
     ts::return_shared(gate);
@@ -199,7 +240,7 @@ fun approve_with_exact_32_byte_id_succeeds() {
     // Exactly 32 bytes = just the gate id, no trailing nonce.
     let id = object::id_bytes(&gate);
     assert!(id.length() == 32, 400);
-    nft_gate::seal_approve(id, &gate, &nft);
+    approve(&mut s, id, &gate, &nft);
     s.return_to_sender(nft);
 
     ts::return_shared(gate);
@@ -222,7 +263,7 @@ fun approve_with_7_byte_id_aborts() {
     s.next_tx(HOLDER);
     let nft = s.take_from_sender<AccessNFT>();
     let bad: vector<u8> = vector[0, 1, 2, 3, 4, 5, 6]; // 7 bytes < 32
-    nft_gate::seal_approve(bad, &gate, &nft); // aborts E_ID_NOT_NAMESPACED
+    approve(&mut s, bad, &gate, &nft); // aborts E_ID_NOT_NAMESPACED
 
     s.return_to_sender(nft);
     ts::return_shared(gate);
@@ -242,11 +283,11 @@ fun approve_with_exhausted_pass_aborts() {
 
     s.next_tx(HOLDER);
     let nft = s.take_from_sender<AccessNFT>();
-    access_gate::consume(nft, &gate, b"nonce_suffix", s.ctx()); // decrements 1 → 0, returns receipt
+    consume_t(&mut s, nft, &gate); // decrements 1 → 0, returns receipt
 
     s.next_tx(HOLDER);
     let spent = s.take_from_sender<AccessNFT>();
-    nft_gate::seal_approve(id_for(&gate), &gate, &spent); // aborts E_EXHAUSTED
+    approve(&mut s, id_for(&gate), &gate, &spent); // aborts E_EXHAUSTED
 
     s.return_to_sender(spent);
     ts::return_shared(gate);
@@ -272,7 +313,7 @@ fun approve_soulbound_with_foreign_nft_aborts() {
     s.next_tx(HOLDER);
     let gate_b = s.take_shared<Gate>();
     let nft = s.take_from_sender<SoulboundAccessNFT>();
-    nft_gate::seal_approve_soulbound(id_for(&gate_b), &gate_b, &nft); // NFT is gate A's
+    approve_soulbound(&mut s, id_for(&gate_b), &gate_b, &nft); // NFT is gate A's
     s.return_to_sender(nft);
     ts::return_shared(gate_b);
     s.end();
@@ -291,10 +332,10 @@ fun approve_soulbound_with_exhausted_pass_aborts() {
 
     s.next_tx(HOLDER);
     let nft = s.take_from_sender<SoulboundAccessNFT>();
-    access_gate::consume_soulbound(nft, &gate, b"nonce_suffix", s.ctx());
+    consume_soulbound_t(&mut s, nft, &gate);
     s.next_tx(HOLDER);
     let spent = s.take_from_sender<SoulboundAccessNFT>();
-    nft_gate::seal_approve_soulbound(id_for(&gate), &gate, &spent);
+    approve_soulbound(&mut s, id_for(&gate), &gate, &spent);
     s.return_to_sender(spent);
     ts::return_shared(gate);
     s.end();
@@ -313,8 +354,8 @@ fun approve_single_use_pass_with_uses_left_succeeds_without_consuming() {
 
     s.next_tx(HOLDER);
     let nft = s.take_from_sender<AccessNFT>();
-    nft_gate::seal_approve(id_for(&gate), &gate, &nft);
-    nft_gate::seal_approve(id_for(&gate), &gate, &nft);
+    approve(&mut s, id_for(&gate), &gate, &nft);
+    approve(&mut s, id_for(&gate), &gate, &nft);
     assert!(access_gate::uses_remaining(&nft) == option::some(2), 0);
     s.return_to_sender(nft);
     ts::return_shared(gate);
@@ -329,13 +370,12 @@ fun approve_on_paused_gate_still_succeeds() {
     s.next_tx(CREATOR);
     let mut gate = s.take_shared<Gate>();
     let cap = s.take_from_sender<AdminCap>();
-    grant(&mut s, &cap, &gate, HOLDER);
-    access_gate::set_paused(&cap, &mut gate, true);
+    grant_then_set_paused(&mut s, &cap, &mut gate, HOLDER, vector[true]);
     s.return_to_sender(cap);
 
     s.next_tx(HOLDER);
     let nft = s.take_from_sender<AccessNFT>();
-    nft_gate::seal_approve(id_for(&gate), &gate, &nft);
+    approve(&mut s, id_for(&gate), &gate, &nft);
     s.return_to_sender(nft);
     ts::return_shared(gate);
     s.end();
@@ -354,13 +394,12 @@ fun approve_while_paused(pause_blocks_decryption: bool) {
     s.next_tx(CREATOR);
     let mut gate = s.take_shared<Gate>();
     let cap = s.take_from_sender<AdminCap>();
-    grant(&mut s, &cap, &gate, HOLDER);
-    access_gate::set_paused(&cap, &mut gate, true);
+    grant_then_set_paused(&mut s, &cap, &mut gate, HOLDER, vector[true]);
     s.return_to_sender(cap);
 
     s.next_tx(HOLDER);
     let nft = s.take_from_sender<AccessNFT>();
-    nft_gate::seal_approve(id_for(&gate), &gate, &nft);
+    approve(&mut s, id_for(&gate), &gate, &nft);
     s.return_to_sender(nft);
     ts::return_shared(gate);
     s.end();
@@ -384,16 +423,60 @@ fun approve_resumes_after_unpause_when_policy_blocks_decryption() {
     s.next_tx(CREATOR);
     let mut gate = s.take_shared<Gate>();
     let cap = s.take_from_sender<AdminCap>();
-    grant(&mut s, &cap, &gate, HOLDER);
-    access_gate::set_paused(&cap, &mut gate, true);
-    access_gate::set_paused(&cap, &mut gate, false);
+    grant_then_set_paused(&mut s, &cap, &mut gate, HOLDER, vector[true, false]);
     s.return_to_sender(cap);
 
     s.next_tx(HOLDER);
     let nft = s.take_from_sender<AccessNFT>();
-    nft_gate::seal_approve(id_for(&gate), &gate, &nft);
+    approve(&mut s, id_for(&gate), &gate, &nft);
     s.return_to_sender(nft);
     ts::return_shared(gate);
     s.end();
 }
 
+
+// ── Version gate ─────────────────────────────────────────────────────────────────
+
+// A valid pass that would be approved at the current version, checked against another version.
+fun approve_at_version(soulbound: bool, version: u64) {
+    let mut s = ts::begin(CREATOR);
+    make_gate(&mut s, soulbound, 0);
+    s.next_tx(CREATOR);
+    let gate = s.take_shared<Gate>();
+    let cap = s.take_from_sender<AdminCap>();
+    grant(&mut s, &cap, &gate, HOLDER);
+    s.return_to_sender(cap);
+
+    s.next_tx(HOLDER);
+    let mut policy = config::new_for_testing(s.ctx());
+    config::set_version_for_testing(&mut policy, version);
+    if (soulbound) {
+        let nft = s.take_from_sender<SoulboundAccessNFT>();
+        nft_gate::seal_approve_soulbound(id_for(&gate), &policy, &gate, &nft);
+        s.return_to_sender(nft);
+    } else {
+        let nft = s.take_from_sender<AccessNFT>();
+        nft_gate::seal_approve(id_for(&gate), &policy, &gate, &nft);
+        s.return_to_sender(nft);
+    };
+    config::destroy_for_testing(policy);
+    ts::return_shared(gate);
+    s.end();
+}
+
+#[test]
+fun approve_at_current_version_succeeds() {
+    approve_at_version(false, config::package_version());
+}
+
+#[test]
+#[expected_failure(abort_code = 1, location = seal_policies::config)] // E_WRONG_VERSION
+fun wrong_version_blocks_seal_approve() {
+    approve_at_version(false, config::package_version() + 1);
+}
+
+#[test]
+#[expected_failure(abort_code = 1, location = seal_policies::config)] // E_WRONG_VERSION
+fun wrong_version_blocks_seal_approve_soulbound() {
+    approve_at_version(true, 0);
+}

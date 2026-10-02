@@ -1,19 +1,28 @@
 #!/usr/bin/env bash
 # Burn the seal_policies UpgradeCap, making the published package PERMANENTLY IMMUTABLE.
 #
-# Why: an upgradeable policy package can retroactively change `seal_approve*` and thereby de-gate
-# (or re-gate) all previously sealed content. Burning the UpgradeCap removes that authority — the
-# published bytecode can never change. This is one of the two supported custody options; the other
-# is transferring the UpgradeCap to a multisig (see transfer-upgrade-cap.sh). Pick one per network.
+# Why: while the cap exists, an upgrade can change `seal_approve*` and so retroactively de-gate (or
+# re-gate) every ciphertext sealed under this package. Burning it fixes the policies for good.
 #
-# This mirrors access-gate-sui/scripts/publish.sh --make-immutable.
+# This is step 5 of the release lifecycle in CUSTODY.md (publish → transfer to the multisig →
+# launch → verify → burn on the planned date). It works for either owner of the cap:
+#   - the active address owns the cap   → burns it directly (after a "YES" confirmation);
+#   - a multisig owns the cap           → writes the unsigned make_immutable transaction and prints
+#                                         the exact steps to sign, combine and execute it.
 #
 # Usage:
-#   NETWORK=testnet bash scripts/make-immutable.sh            # dry run (default)
-#   NETWORK=testnet DRY_RUN=0 bash scripts/make-immutable.sh  # execute (IRREVERSIBLE)
+#   NETWORK=testnet bash scripts/make-immutable.sh            # dry run (default): verify and explain
+#   NETWORK=testnet DRY_RUN=0 bash scripts/make-immutable.sh  # execute (IRREVERSIBLE) / write the tx
 #
-# The UpgradeCap id is read from Published.toml (`upgrade-capability` under [published.<network>]),
-# or override with UPGRADE_CAP_ID.
+# Inputs:
+#   NETWORK          target network; the active `sui client` env must equal it (never switched here)
+#   UPGRADE_CAP_ID   optional; defaults to Published.toml [published.<network>].upgrade-capability,
+#                    then SEAL_POLICIES_UPGRADE_CAP_ID in .env.<network>
+#   PACKAGE_ID       optional; defaults to Published.toml [published.<network>].published-at,
+#                    then SEAL_POLICIES_PACKAGE_ID in .env.<network>
+#   GAS_BUDGET       optional; default 100000000 MIST
+#   MAINNET_CONFIRM  must be 1 for mainnet (a skipped mainnet run exits 78)
+#   OUT_DIR          multisig path only: where the unsigned transaction is written (default ./custody-out)
 
 set -euo pipefail
 
@@ -22,116 +31,132 @@ DRY_RUN="${DRY_RUN:-1}"
 GAS_BUDGET="${GAS_BUDGET:-100000000}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PUBLISHED_TOML="$REPO_ROOT/Published.toml"
+PACKAGE_LABEL="seal_policies"
+OUT_DIR="${OUT_DIR:-$REPO_ROOT/custody-out}"
+UPGRADE_CAP_TYPE="0x0000000000000000000000000000000000000000000000000000000000000002::package::UpgradeCap"
 
 log() { printf '%s\n' "$*" >&2; }
 
-# Extract `upgrade-capability` from the [published.<network>] section of Published.toml.
-read_upgrade_cap() {
-  awk -v section="[published.${NETWORK}]" '
+# Read one key from the [published.<network>] section of Published.toml.
+published_field() {
+  awk -v section="[published.${NETWORK}]" -v key="$1" '
     $0 == section { in_section = 1; next }
     /^\[/         { in_section = 0 }
-    in_section && /^[[:space:]]*upgrade-capability[[:space:]]*=/ {
+    in_section && $0 ~ "^[[:space:]]*" key "[[:space:]]*=" {
       gsub(/.*=[[:space:]]*"/, ""); gsub(/".*/, ""); print; exit
     }
   ' "$PUBLISHED_TOML"
 }
 
-# Extract `published-at` (this package's id) from the same Published.toml section.
-read_package_id() {
-  awk -v section="[published.${NETWORK}]" '
-    $0 == section { in_section = 1; next }
-    /^\[/         { in_section = 0 }
-    in_section && /^[[:space:]]*published-at[[:space:]]*=/ {
-      gsub(/.*=[[:space:]]*"/, ""); gsub(/".*/, ""); print; exit
-    }
-  ' "$PUBLISHED_TOML"
+# Record a completed burn in deployments.json (localnet has no record). Published.toml is written by
+# Sui and is left untouched; its upgrade-capability then names a consumed object.
+record_burn() {
+  local deployments="$REPO_ROOT/deployments.json"
+  [ "$NETWORK" != "localnet" ] && [ -f "$deployments" ] || return 0
+  jq --arg n "$NETWORK" --arg d "$(date -u +%Y-%m-%d)" \
+    '.[$n].custody.upgradeCapOwner = null | .[$n].custody.burnedAt = $d | .[$n].custody.plannedBurnDate = null' \
+    "$deployments" > "$deployments.tmp" && mv "$deployments.tmp" "$deployments"
+  log "Recorded the burn in $deployments — commit it."
 }
 
 long_addr() { local h="${1#0x}"; printf '0x%064s' "${h,,}" | tr ' ' 0; }
 
-# Refuse to act unless the active env is NETWORK and UPGRADE_CAP_ID is an UpgradeCap for THIS
-# package (Published.toml published-at, or PACKAGE_ID override) owned by the active address. The
-# same deploy key may hold other packages' UpgradeCaps — never burn/transfer the wrong one.
-# ── Preflight (hard failures before anything is signed; same rules as access-gate-sui publish.sh) ──
-# The active env must be NETWORK; testnet/mainnet must report their chain identifier; the CLI
-# major.minor must match Published.toml `toolchain-version`; mainnet needs MAINNET_CONFIRM=1.
+# Hard failures before anything is signed: the active env must be NETWORK, testnet/mainnet must report
+# their chain identifier, the CLI major.minor must match Published.toml `toolchain-version`, and
+# mainnet needs MAINNET_CONFIRM=1.
 preflight() {
-  local published_toml="$1" env chain want tool cli
+  local env chain want tool cli
   env="$(sui client active-env 2>/dev/null || true)"
-  [ "$env" = "$NETWORK" ] || { echo "ERROR: active Sui env is '${env:-<none>}', expected '$NETWORK' (sui client switch --env $NETWORK)." >&2; exit 1; }
+  [ "$env" = "$NETWORK" ] || { log "ERROR: active Sui env is '${env:-<none>}', expected '$NETWORK' (sui client switch --env $NETWORK)."; exit 1; }
   case "$NETWORK" in testnet) want=4c78adac ;; mainnet) want=35834a8a ;; *) want="" ;; esac
   if [ -n "$want" ]; then
     chain="$(sui client chain-identifier 2>/dev/null | awk '/^Hex:/{print $2; exit} !/:/{print $1; exit}')"
-    [ "$chain" = "$want" ] || { echo "ERROR: chain identifier is '${chain:-<unreachable>}', expected $want for $NETWORK." >&2; exit 1; }
+    [ "$chain" = "$want" ] || { log "ERROR: chain identifier is '${chain:-<unreachable>}', expected $want for $NETWORK."; exit 1; }
   fi
-  tool="$(awk -v s="[published.$NETWORK]" '$0==s{f=1;next} /^\[/{f=0} f && /^toolchain-version/{gsub(/.*= *"|".*/,"");print;exit}' "$published_toml" 2>/dev/null || true)"
+  tool="$(published_field toolchain-version || true)"
   cli="$(sui --version | awk '{print $2}' | cut -d- -f1)"
   if [ -n "$tool" ] && [ "${cli%.*}" != "${tool%.*}" ]; then
-    echo "ERROR: sui CLI $cli does not match Published.toml toolchain-version $tool (major.minor)." >&2; exit 1
+    log "ERROR: sui CLI $cli does not match Published.toml toolchain-version $tool (major.minor)."; exit 1
   fi
   if [ "$NETWORK" = "mainnet" ] && [ "${MAINNET_CONFIRM:-}" != "1" ]; then
-    echo "SKIPPED: mainnet — re-run with MAINNET_CONFIRM=1 to proceed." >&2; exit 78
+    log "SKIPPED: mainnet — re-run with MAINNET_CONFIRM=1 to proceed."; exit 78
   fi
 }
 
-verify_upgrade_cap() {
-  local pkg json typ owner cap_pkg
-  preflight "$PUBLISHED_TOML"
-  pkg="${PACKAGE_ID:-$(read_package_id)}"
-  [ -n "$pkg" ] || { log "ERROR: cannot determine this package's id (Published.toml published-at or PACKAGE_ID)."; exit 1; }
-  json="$(sui client object "$UPGRADE_CAP_ID" --json 2>/dev/null)" || { log "ERROR: UpgradeCap $UPGRADE_CAP_ID not found on $NETWORK (already burned?)."; exit 1; }
-  typ="$(jq -r '.objType // empty' <<<"$json")"
-  owner="$(jq -r '.owner.AddressOwner // empty' <<<"$json")"
-  cap_pkg="$(jq -r '.content.package // empty' <<<"$json")"
-  [ "$typ" = "0x0000000000000000000000000000000000000000000000000000000000000002::package::UpgradeCap" ] \
-    || { log "ERROR: $UPGRADE_CAP_ID is a '$typ', not an UpgradeCap."; exit 1; }
-  [ "$(long_addr "$cap_pkg")" = "$(long_addr "$pkg")" ] \
-    || { log "ERROR: UpgradeCap $UPGRADE_CAP_ID controls package $cap_pkg, not seal_policies $pkg."; exit 1; }
-  [ "$(long_addr "$owner")" = "$(long_addr "$(sui client active-address)")" ] \
-    || { log "ERROR: UpgradeCap $UPGRADE_CAP_ID is owned by '${owner:-<not address-owned>}', not the active address."; exit 1; }
-  log "Verified     : UpgradeCap for seal_policies $pkg, owned by the active address"
-}
-
-UPGRADE_CAP_ID="${UPGRADE_CAP_ID:-}"
-if [ -z "$UPGRADE_CAP_ID" ]; then
-  if [ ! -f "$PUBLISHED_TOML" ]; then
-    log "ERROR: $PUBLISHED_TOML not found and UPGRADE_CAP_ID not set."
-    exit 1
-  fi
-  UPGRADE_CAP_ID="$(read_upgrade_cap)"
+# IDs: explicit env vars, then Published.toml, then the .env.<network> record written by publish.sh
+# (the only record on localnet, which has no Published.toml section).
+ENV_FILE="$REPO_ROOT/.env.${NETWORK}"
+if [ -f "$ENV_FILE" ]; then
+  REC_CAP="$(sed -n 's/^SEAL_POLICIES_UPGRADE_CAP_ID=//p' "$ENV_FILE")"
+  REC_PKG="$(sed -n 's/^SEAL_POLICIES_PACKAGE_ID=//p' "$ENV_FILE")"
 fi
+UPGRADE_CAP_ID="${UPGRADE_CAP_ID:-$(published_field upgrade-capability 2>/dev/null || true)}"
+UPGRADE_CAP_ID="${UPGRADE_CAP_ID:-${REC_CAP:-}}"
+PACKAGE_ID="${PACKAGE_ID:-$(published_field published-at 2>/dev/null || true)}"
+PACKAGE_ID="${PACKAGE_ID:-${REC_PKG:-}}"
+[ -n "$UPGRADE_CAP_ID" ] || { log "ERROR: no UpgradeCap for '$NETWORK' (set UPGRADE_CAP_ID, or publish first)."; exit 1; }
+[ -n "$PACKAGE_ID" ] || { log "ERROR: cannot determine this package's id (set PACKAGE_ID, or publish first)."; exit 1; }
 
-if [ -z "$UPGRADE_CAP_ID" ]; then
-  log "ERROR: could not determine UpgradeCap id for network '$NETWORK'."
-  log "       Set UPGRADE_CAP_ID=0x... or check Published.toml [published.$NETWORK].upgrade-capability."
-  exit 1
-fi
+preflight
+
+# The cap must be an UpgradeCap for THIS package (the deploy key may hold other packages' caps).
+json="$(sui client object "$UPGRADE_CAP_ID" --json 2>/dev/null)" || { log "ERROR: UpgradeCap $UPGRADE_CAP_ID not found on $NETWORK (already burned?)."; exit 1; }
+typ="$(jq -r '.objType // empty' <<<"$json")"
+owner="$(jq -r '.owner.AddressOwner // empty' <<<"$json")"
+cap_pkg="$(jq -r '.content.package // empty' <<<"$json")"
+[ "$typ" = "$UPGRADE_CAP_TYPE" ] || { log "ERROR: $UPGRADE_CAP_ID is a '$typ', not an UpgradeCap."; exit 1; }
+[ "$(long_addr "$cap_pkg")" = "$(long_addr "$PACKAGE_ID")" ] \
+  || { log "ERROR: UpgradeCap $UPGRADE_CAP_ID controls package $cap_pkg, not $PACKAGE_LABEL $PACKAGE_ID."; exit 1; }
+[ -n "$owner" ] || { log "ERROR: UpgradeCap $UPGRADE_CAP_ID is not owned by an address."; exit 1; }
+active="$(sui client active-address)"
+if [ "$(long_addr "$owner")" = "$(long_addr "$active")" ]; then mode="direct"; else mode="multisig"; fi
 
 log "Network      : $NETWORK"
-log "UpgradeCap   : $UPGRADE_CAP_ID"
+log "Package      : $PACKAGE_LABEL $PACKAGE_ID"
+log "UpgradeCap   : $UPGRADE_CAP_ID (owner $owner)"
+log "Mode         : $mode $( [ "$mode" = multisig ] && echo '(the owner is not the active address; it must sign)')"
 log "Dry run      : $DRY_RUN"
-verify_upgrade_cap
 log ""
-log "WARNING: make_immutable is PERMANENTLY IRREVERSIBLE. The seal_policies package can never be"
-log "         upgraded again; future changes must ship as a NEW package at a new address, and every"
-log "         verifier/committee must be pointed at the new package id."
+log "WARNING: make_immutable is PERMANENTLY IRREVERSIBLE. $PACKAGE_LABEL can never be upgraded again;"
+log "         future changes ship as a NEW package with a new original id, and content must be"
+log "         re-sealed under it."
 log ""
 
-if [ "$DRY_RUN" != "0" ]; then
-  log "Dry run — would execute:"
-  log "  sui client call --gas-budget $GAS_BUDGET \\"
-  log "    --package 0x2 --module package --function make_immutable --args $UPGRADE_CAP_ID"
+if [ "$mode" = "direct" ]; then
+  if [ "$DRY_RUN" != "0" ]; then
+    log "Dry run — would execute: sui client call --package 0x2 --module package --function make_immutable --args $UPGRADE_CAP_ID"
+    log "Re-run with DRY_RUN=0 to execute."
+    exit 0
+  fi
+  read -r -p "Type YES to permanently burn the UpgradeCap: " CONFIRM
+  [ "$CONFIRM" = "YES" ] || { log "Aborted."; exit 1; }
+  sui client call --json --gas-budget "$GAS_BUDGET" \
+    --package 0x2 --module package --function make_immutable --args "$UPGRADE_CAP_ID" >/dev/null
+else
+  # Multisig: build the unsigned transaction with the cap's owner as sender (that address pays gas).
+  if [ "$DRY_RUN" != "0" ]; then
+    log "Dry run — with DRY_RUN=0 this writes the unsigned make_immutable transaction (sender $owner)"
+    log "to $OUT_DIR and prints the signing steps. The multisig address must hold SUI for gas."
+    exit 0
+  fi
+  mkdir -p "$OUT_DIR"
+  tx_file="$OUT_DIR/make-immutable-$NETWORK-$(date -u +%Y%m%dT%H%M%SZ).txbytes"
+  sui client ptb \
+    --move-call 0x2::package::make_immutable "@$UPGRADE_CAP_ID" \
+    --sender "@$owner" --gas-budget "$GAS_BUDGET" --serialize-unsigned-transaction > "$tx_file"
+  log "Unsigned transaction written to: $tx_file"
   log ""
-  log "Re-run with DRY_RUN=0 to execute."
+  log "Next (each required signer, then once to combine and execute):"
+  log "  1. sui keytool sign --address <signer address> --data \"\$(cat $tx_file)\""
+  log "     → copy suiSignature from each signer (in the --json output)."
+  log "  2. sui keytool multi-sig-combine-partial-sig --pks <all pks> --weights <weights> \\"
+  log "       --threshold <threshold> --sigs <suiSignature …>"
+  log "     → copy multisigSerialized (the same --pks/--weights/--threshold used to create $owner)."
+  log "  3. sui client execute-signed-tx --tx-bytes \"\$(cat $tx_file)\" --signatures <multisigSerialized>"
+  log "  4. Record the burn: set custody.upgradeCapOwner to null and custody.burnedAt to the date in"
+  log "     deployments.json [$NETWORK], and commit it. (Published.toml is Sui's file; leave it as is.)"
   exit 0
 fi
-
-read -r -p "Type YES to permanently burn the UpgradeCap: " CONFIRM
-[ "$CONFIRM" = "YES" ] || { log "Aborted."; exit 1; }
-
-sui client call --json --gas-budget "$GAS_BUDGET" \
-  --package 0x2 --module package --function make_immutable \
-  --args "$UPGRADE_CAP_ID"
 
 # The UpgradeCap being consumed is the only proof of immutability (a package object is always
 # "Immutable"-owned).
@@ -139,4 +164,5 @@ if sui client object "$UPGRADE_CAP_ID" --json >/dev/null 2>&1; then
   log "ERROR: UpgradeCap $UPGRADE_CAP_ID still exists after make_immutable."
   exit 1
 fi
-log "Package is now permanently immutable (UpgradeCap consumed). Remove/annotate the upgrade-capability in Published.toml."
+log "Package is now permanently immutable (UpgradeCap consumed)."
+record_burn

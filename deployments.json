@@ -1,0 +1,11 @@
+{
+  "testnet": {
+    "policyConfigId": "0xa5013eb407cac7e48b0b7f1cb5540b0e6115566dd01988b8f11fe77f4ebf3595",
+    "custody": {
+      "multisigAddress": null,
+      "upgradeCapOwner": "0xa991ae11b0785718cd3ad1c616e804a4c083f431b3144bb845bdec651164864a",
+      "plannedBurnDate": null,
+      "burnedAt": null
+    }
+  }
+}

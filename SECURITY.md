@@ -10,7 +10,8 @@ This policy covers security issues in:
 - The discovery registry (`sources/sealed_content.move`) as it affects integrity of published
   pointers
 - The published testnet package at
-  `0x42cc181f851ef702c1fddc9b925553f03b71784edff49d80fbc260055f86d612`
+  `0x61c4aaa431cc33a41a9db34621e2925fc8eb4e3b3f1d70eaeb8d8c2b73507e42` (and the superseded `0x42cc181f851ef702c1fddc9b925553f03b71784edff49d80fbc260055f86d612`
+  while content sealed under it is in use)
 
 It does not cover:
 
@@ -20,7 +21,7 @@ It does not cover:
 - The `access-gate-sui` package it depends on (see that repo's `SECURITY.md`)
 - The client-side identity encoder `@meddleware/seal-client` (`bytes.ts`) — the byte layouts here
   and there must match bit-for-bit; a client-only drift is reported against that package
-- Operator key custody of the `UpgradeCap`
+- Custody of the `UpgradeCap` and `PolicyAdminCap` (the multisig process in `CUSTODY.md`)
 
 ## Security model (invariants)
 
@@ -38,6 +39,9 @@ treated as high severity:
    big-endian `unlock_ms` and aborts before `Clock.timestamp_ms() >= unlock_ms`.
 5. **Malformed identity input aborts cleanly.** Length guards precede all indexing; a short or
    malformed identity aborts rather than reading out of bounds.
+6. **Only the current package version acts.** Every `seal_approve*` and `sealed_content::publish`
+   aborts (`config::E_WRONG_VERSION`) unless the shared `PolicyConfig` names this package version;
+   `migrate` (needs `PolicyAdminCap`) only moves forward and retires every older version at once.
 
 Known, intentional properties (not vulnerabilities):
 
@@ -49,10 +53,12 @@ Known, intentional properties (not vulnerabilities):
   released the content stays decryptable by that holder indefinitely. Freezing a gate never affects
   decryption; pausing blocks **new** key releases only for gates created with the
   `pause_blocks_decryption` policy (`E_GATE_PAUSED`) — keys already released cannot be revoked.
-- **Upgrade authority.** The testnet package `0x42cc18…` has a live `UpgradeCap`
-  (`0x0ff7fa39…912f`); burning it or moving it to a multisig is an operator requirement before launch
-  in the audit (`docs/audit/seal-policies-sui-audit.md`). Superseded and stray packages are immutable
-  (caps burned 2026-09-28).
+- **Upgrade authority.** Each full release follows `CUSTODY.md`: the UpgradeCap moves to the custody
+  multisig after publishing and the multisig burns it on a planned date after a verification window.
+  The testnet package `0x61c4aa…` (version-gated, 2026-10-02) has a live `UpgradeCap` (`0x12ee376f…5a74`,
+  publisher EOA), recorded in `deployments.json`. The superseded `0x42cc18…` (cap `0x0ff7fa39…912f`) has
+  its cap burned once consumers have moved. Older superseded
+  and stray packages are immutable (caps burned 2026-09-28).
 
 ## Supported versions
 

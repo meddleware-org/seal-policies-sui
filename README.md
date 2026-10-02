@@ -8,6 +8,10 @@ without aborting (evaluated via `dry_run_transaction_block` under the requester'
 policy type is a **self-contained module** exposing its own `seal_approve*` entry function. Adding a
 policy is a new module — existing modules are never touched, and **no policy is privileged**.
 
+Every `seal_approve*` and `sealed_content::publish` takes the shared **`config::PolicyConfig`** as
+its second argument and aborts (`config::E_WRONG_VERSION`) unless it names this package version, so an
+upgrade can retire older code everywhere at once (see [Version gating](#version-gating)).
+
 ## Modules
 
 | Module | `seal_approve*` | Identity (`id`) layout | Gates on |
@@ -15,6 +19,7 @@ policy is a new module — existing modules are never touched, and **no policy i
 | `nft_gate` | `seal_approve`, `seal_approve_soulbound` | `[32-byte gate id][nonce]` | Ownership of a valid `access_gate` NFT/pass for that gate |
 | `timelock` | `seal_approve` | `[8-byte big-endian unlock_ms][nonce]` | On-chain `Clock` ≥ unlock time |
 | `sealed_content` | — (registry, not a policy) | — | Publishes `SealedContent` pointers binding a Walrus blob to a gate for discovery |
+| `config` | — (version gate, not a policy) | — | Shared `PolicyConfig { version }`; `migrate` (needs `PolicyAdminCap`) |
 
 ### `nft_gate`
 
@@ -34,11 +39,20 @@ consumed per decrypt); an already-exhausted (zero-use) pass is rejected. If the 
 Time-lock encryption. Shares nothing with `nft_gate` (no gate, no NFT) — it exists to keep the
 abstraction honest: adding a policy is a new module, not a change to an existing one.
 
+### Version gating
+
+Older package versions stay callable on-chain forever, so a key server could be asked to evaluate an
+old, faulty `seal_approve*`. `config::init` shares one `PolicyConfig { version }` and gives the
+`PolicyAdminCap` to the publisher. Each entry calls `config::check_version` first. An upgrade bumps
+`VERSION`, then the cap holder calls `migrate` (forward only, `E_NOT_UPGRADE`), which retires every
+older version at once. Seal identities stay under the original id, so content never needs re-sealing
+for an upgrade. A new policy module must take `&PolicyConfig` and call `config::check_version` first.
+
 ### `sealed_content`
 
 Not a Seal policy — an additive registry so `access_gate` operators can attach Seal-encrypted,
-gate-unlockable content **without changing the access-gate contract**. `publish(gate_id, blob_id,
-seal_id, label)` shares a `SealedContent` and emits `SealedContentPublished` for discovery. The
+gate-unlockable content **without changing the access-gate contract**. `publish(policy, gate_id,
+blob_id, seal_id, label)` shares a `SealedContent` and emits `SealedContentPublished` for discovery. The
 pointers are public; confidentiality is enforced by Seal + `nft_gate`.
 
 ## Future policy roadmap (drop-in — a module here + a client provider)
@@ -59,21 +73,22 @@ module with its own `seal_approve*`; none changes the existing modules:
 ## Build & test
 
 ```bash
-sui move build
-sui move test        # 28 unit tests (nft_gate + timelock + sealed_content)
+sui move build --build-env testnet
+sui move test --build-env testnet   # 37 unit tests (config + nft_gate + timelock + sealed_content)
 ```
 
 ## Deployments
 
 | Network | Original id (types, events, Seal identity namespace) | Published-at (call targets) |
 | --- | --- | --- |
-| testnet | `0x42cc181f851ef702c1fddc9b925553f03b71784edff49d80fbc260055f86d612` | `0x8fcf9c39f35880c923fe811d7566d3f0352fc8b1d1c2652cac711810cb1f15cb` (v2, 2026-10-01: `sealed_content` string bounds, D9) |
+| testnet | `0x61c4aaa431cc33a41a9db34621e2925fc8eb4e3b3f1d70eaeb8d8c2b73507e42` | `0x61c4aaa431cc33a41a9db34621e2925fc8eb4e3b3f1d70eaeb8d8c2b73507e42` (2026-10-02: version gating, `PolicyConfig` `0xa5013eb407cac7e48b0b7f1cb5540b0e6115566dd01988b8f11fe77f4ebf3595`) |
 | mainnet | — (pending) | — |
 
-Both link `access_gate` `0x1a81ca…`; `Published.toml` is the source of truth. Encrypt under the
+It links `access_gate` `0xa55789…`; `Published.toml` and `deployments.json` are the source of truth. Encrypt under the
 original id and call `seal_approve` / `publish` at published-at.
 
-Superseded: `0x9f0563bf…231e` (linked the pre-policy `access_gate` `0x0bedd0…`; UpgradeCap burned).
+Superseded: `0x42cc181f851ef702c1fddc9b925553f03b71784edff49d80fbc260055f86d612` (original id; v2 published-at `0x8fcf9c…15cb`; linked `access_gate`
+`0x1a81ca…`; predates version gating) and `0x9f0563bf…231e` (linked the pre-policy `access_gate` `0x0bedd0…`; UpgradeCap burned).
 Strays `0x67520f80…88d3` and `0x882fcc68…e8cc` bundle their own copy of the `access_gate` module, so
 their `nft_gate` can never accept a real gate's pass; their UpgradeCaps are burned (see
 [the audit](docs/audit/seal-policies-sui-audit.md), F8).
@@ -86,35 +101,38 @@ used because tags are mutable (`v0.0.1` has already been moved to a different co
 
 ```toml
 [dependencies]
-access_gate = { git = "https://github.com/meddleware-org/access-gate-sui.git", rev = "dcd2d3c2f918904950e8cb079d0c648fc79475f3" }
+access_gate = { git = "https://github.com/meddleware-org/access-gate-sui.git", rev = "b445876c8b590630d996689676d98adafc33cd04" }
 ```
 
-That commit records the testnet publication of `access_gate` `0x1a81ca…` (its `Published.toml`), which
+That commit records the testnet publication of `access_gate` `0xa55789…` (its `Published.toml`), which
 the published `seal_policies` links against. Change the rev only together with the address it
 resolves to, and re-publish if that address changes; after changing it, regenerate `Move.lock`
 (`sui move build --build-env testnet`) and commit it.
 
 ## Deploy
 
-Publish to testnet, then record the package id for the client (`VITE_SEAL_PACKAGE_ID_TESTNET`).
-Because the on-chain address of `access_gate` is identical whether resolved via git or a local path,
-a package already deployed (see Deployments above) does **not** need re-publishing after switching the
-dependency form — only `Move.lock` changes.
+`scripts/publish.sh <localnet|testnet|mainnet>` publishes a fresh package and records the package,
+`UpgradeCap`, `PolicyAdminCap` and `PolicyConfig` in `.env.<network>` (gitignored), and the
+`PolicyConfig` id with the custody record in `deployments.json` (committed, shipped in the npm package
+for `@meddleware/seal-client`). Sui writes `Published.toml`. Commit both files after every publish.
 
-## Operations runbook (UpgradeCap custody)
+## Custody and operations runbook
 
-Pick **one** custody option per network. Both scripts are dry-run by default, verify that the cap
-is this package's UpgradeCap owned by the active address, and run the same preflight as
-`access-gate-sui` (active env = `NETWORK`, chain identifier, CLI major.minor vs `Published.toml`
-`toolchain-version`, `MAINNET_CONFIRM=1` for mainnet; a skipped run exits `78`).
+Every full release follows [CUSTODY.md](CUSTODY.md): publish, transfer the `PolicyAdminCap` and
+`UpgradeCap` to the multisig, launch, verify during the planned window, then the multisig burns the
+UpgradeCap on the planned date. Every script runs the same preflight as `access-gate-sui` (active env =
+`NETWORK`, chain identifier, CLI major.minor vs `Published.toml` `toolchain-version`,
+`MAINNET_CONFIRM=1` for mainnet; a skipped run exits `78`).
 
 | Script | Effect | Dry run | Execute | Recovery |
 | --- | --- | --- | --- | --- |
-| `scripts/make-immutable.sh` | Burn the UpgradeCap: the policy package can never change (future changes ship as a new package) | `NETWORK=testnet bash scripts/make-immutable.sh` | `DRY_RUN=0 …` then `YES` | Irreversible. The script checks afterwards that the cap is gone; remove `upgrade-capability` from `Published.toml` |
-| `scripts/transfer-upgrade-cap.sh` | Move the UpgradeCap to a multisig (upgrades need M-of-N) | `NETWORK=testnet MULTISIG_ADDRESS=0x… bash scripts/transfer-upgrade-cap.sh` | `DRY_RUN=0 …` then `YES` | Record the multisig as the cap owner; a re-run refuses once the active address no longer owns the cap |
+| `scripts/publish.sh <net>` | Fresh publish; records IDs and custody | — (publishing is the action) | as shown | The previous `.env.<net>` is kept as `.env.<net>.<timestamp>.bak`; never re-publish to recover a later step. `ALLOW_TOOLCHAIN_CHANGE=1` permits a deliberate move to a new CLI version |
+| `scripts/transfer-authority.sh [--include-upgrade-cap]` | Move the `PolicyAdminCap` (and the UpgradeCap) to the multisig | `NETWORK=<net> MULTISIG_ADDRESS=0x… bash scripts/transfer-authority.sh --include-upgrade-cap` | `DRY_RUN=0 …` then `YES` | Each object is re-verified (type, package, owner); a re-run refuses anything already transferred. Records the multisig in `deployments.json` |
+| `scripts/make-immutable.sh` | Burn the UpgradeCap on the planned date. The deploy key burns directly; a multisig-owned cap gets an unsigned transaction and the signing steps | `NETWORK=<net> bash scripts/make-immutable.sh` | `DRY_RUN=0 …` then `YES` (direct), or sign and execute the written transaction (multisig) | Irreversible. Checks the cap's type and package first and that it is gone afterwards; records the burn in `deployments.json` |
+| `scripts/multisig-address.sh` | Derive the custody multisig address | `MULTISIG_PKS=… MULTISIG_WEIGHTS=… MULTISIG_THRESHOLD=… bash scripts/multisig-address.sh` | — (read-only) | — |
 
-Until a custody option is executed, the deploy key can upgrade `seal_policies` and thereby change
-who can decrypt existing ciphertexts (the Seal identity namespace is the package).
+Until the UpgradeCap is burned, its holder can upgrade `seal_policies` and thereby change who can
+decrypt existing ciphertexts (the Seal identity namespace is the package).
 
 ## License
 

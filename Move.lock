@@ -5,19 +5,19 @@
 version = 4
 
 [pinned.testnet.MoveStdlib]
-source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "b0535f1f3a3310e71790e90d8ae4e8ca840c897e" }
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "83f11dc85d5695a57894329b005b78d75f9bb059" }
 use_environment = "testnet"
 manifest_digest = "C4FE4C91DE74CBF223B2E380AE40F592177D21870DC2D7EB6227D2D694E05363"
 deps = {}
 
 [pinned.testnet.Sui]
-source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "b0535f1f3a3310e71790e90d8ae4e8ca840c897e" }
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "83f11dc85d5695a57894329b005b78d75f9bb059" }
 use_environment = "testnet"
 manifest_digest = "7AFB66695545775FBFBB2D3078ADFD084244D5002392E837FDE21D9EA1C6D01C"
 deps = { MoveStdlib = "MoveStdlib" }
 
 [pinned.testnet.access_gate]
-source = { git = "https://github.com/meddleware-org/access-gate-sui.git", subdir = ".", rev = "dcd2d3c2f918904950e8cb079d0c648fc79475f3" }
+source = { git = "https://github.com/meddleware-org/access-gate-sui.git", subdir = ".", rev = "b445876c8b590630d996689676d98adafc33cd04" }
 use_environment = "testnet"
 manifest_digest = "5745706258F61D6CE210904B3E6AE87A73CE9D31A6F93BE4718C442529332A87"
 deps = { std = "MoveStdlib", sui = "Sui" }
@@ -25,5 +25,5 @@ deps = { std = "MoveStdlib", sui = "Sui" }
 [pinned.testnet.seal_policies]
 source = { root = true }
 use_environment = "testnet"
-manifest_digest = "91709A752288B53C866FE8AD2BE7DB78AF2A7D88650808C286A5BBD2FD31AD58"
+manifest_digest = "05CF6F930BF827903B0405E26D711B2A83E24CFF6CB1063538CD7FCFDA0E4294"
 deps = { access_gate = "access_gate", std = "MoveStdlib", sui = "Sui" }

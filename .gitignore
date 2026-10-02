@@ -22,3 +22,8 @@ Pub.*.toml
 *.swp
 *.swo
 node_modules/
+# Previous deployment records kept by scripts/publish.sh
+.env.*.bak
+# Unsigned custody transactions written by scripts/make-immutable.sh
+custody-out/
+Published.toml.*.bak

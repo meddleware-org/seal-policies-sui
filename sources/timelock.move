@@ -9,6 +9,7 @@
 /// ones, and nothing privileges the NFT-gate case.
 module seal_policies::timelock;
 
+use seal_policies::config::{Self, PolicyConfig};
 use sui::clock::Clock;
 
 /// Identity too short to carry an 8-byte unlock timestamp.
@@ -18,8 +19,10 @@ const E_TOO_EARLY: u64 = 2;
 
 /// Seal approval: succeeds once `clock.timestamp_ms() >= unlock_ms`, where `unlock_ms` is the
 /// big-endian `u64` in the first 8 bytes of `id`. Any suffix bytes are ignored (they let the
-/// caller make each ciphertext's identity unique).
-entry fun seal_approve(id: vector<u8>, clock: &Clock) {
+/// caller make each ciphertext's identity unique). Aborts with `config::E_WRONG_VERSION` under any
+/// package version other than the one `policy` names.
+entry fun seal_approve(id: vector<u8>, policy: &PolicyConfig, clock: &Clock) {
+    config::check_version(policy);
     assert!(id.length() >= 8, E_BAD_ID);
     let mut unlock_ms: u64 = 0;
     let mut i = 0;

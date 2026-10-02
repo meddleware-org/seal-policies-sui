@@ -4,11 +4,19 @@
 #[test_only]
 module seal_policies::timelock_tests;
 
+use seal_policies::config;
 use seal_policies::timelock;
-use sui::clock;
+use sui::clock::{Self, Clock};
 use sui::test_scenario as ts;
 
 const U: address = @0xA1;
+
+// Call the policy with a fresh current-version PolicyConfig (the version gate is tested in config_tests).
+fun approve(s: &mut ts::Scenario, id: vector<u8>, c: &Clock) {
+    let policy = config::new_for_testing(s.ctx());
+    timelock::seal_approve(id, &policy, c);
+    config::destroy_for_testing(policy);
+}
 
 // Encode `unlock_ms` big-endian into 8 bytes, then a suffix nonce byte.
 fun id_for_unlock(unlock_ms: u64): vector<u8> {
@@ -28,7 +36,7 @@ fun after_unlock_succeeds() {
     let mut s = ts::begin(U);
     let mut c = clock::create_for_testing(s.ctx());
     c.set_for_testing(2000);
-    timelock::seal_approve(id_for_unlock(1000), &c);
+    approve(&mut s, id_for_unlock(1000), &c);
     c.destroy_for_testing();
     s.end();
 }
@@ -39,7 +47,7 @@ fun before_unlock_aborts() {
     let mut s = ts::begin(U);
     let mut c = clock::create_for_testing(s.ctx());
     c.set_for_testing(500);
-    timelock::seal_approve(id_for_unlock(1000), &c);
+    approve(&mut s, id_for_unlock(1000), &c);
     c.destroy_for_testing();
     s.end();
 }
@@ -61,7 +69,7 @@ fun conformance_unlock_ms_big_endian_matches_vector() {
     let mut s = ts::begin(U);
     let mut c = clock::create_for_testing(s.ctx());
     c.set_for_testing(1704067200000);
-    timelock::seal_approve(bytes, &c);
+    approve(&mut s, bytes, &c);
     c.destroy_for_testing();
     s.end();
 }
@@ -71,7 +79,7 @@ fun conformance_unlock_ms_big_endian_matches_vector() {
 fun short_id_aborts() {
     let mut s = ts::begin(U);
     let c = clock::create_for_testing(s.ctx());
-    timelock::seal_approve(vector[1u8, 2u8, 3u8], &c);
+    approve(&mut s, vector[1u8, 2u8, 3u8], &c);
     c.destroy_for_testing();
     s.end();
 }
@@ -82,7 +90,7 @@ fun unlock_ms_zero_succeeds() {
     let mut s = ts::begin(U);
     let mut c = clock::create_for_testing(s.ctx());
     c.set_for_testing(1000); // 1 second after epoch
-    timelock::seal_approve(id_for_unlock(0), &c);
+    approve(&mut s, id_for_unlock(0), &c);
     c.destroy_for_testing();
     s.end();
 }
@@ -95,7 +103,7 @@ fun unlock_ms_max_with_max_clock_succeeds() {
     let mut c = clock::create_for_testing(s.ctx());
     let max_u64: u64 = 18446744073709551615u64;
     c.set_for_testing(max_u64);
-    timelock::seal_approve(id_for_unlock(max_u64), &c);
+    approve(&mut s, id_for_unlock(max_u64), &c);
     c.destroy_for_testing();
     s.end();
 }
@@ -109,7 +117,21 @@ fun exact_8_byte_id_succeeds() {
     // Exactly 8 bytes encoding unlock_ms = 1000.
     let id_8: vector<u8> = vector[0, 0, 0, 0, 0, 0, 3, 232]; // 1000 = 0x000003E8
     assert!(id_8.length() == 8, 500);
-    timelock::seal_approve(id_8, &c);
+    approve(&mut s, id_8, &c);
+    c.destroy_for_testing();
+    s.end();
+}
+
+#[test]
+#[expected_failure(abort_code = 1, location = seal_policies::config)] // E_WRONG_VERSION
+fun wrong_version_blocks_timelock() {
+    let mut s = ts::begin(U);
+    let mut c = clock::create_for_testing(s.ctx());
+    c.set_for_testing(2000);
+    let mut policy = config::new_for_testing(s.ctx());
+    config::set_version_for_testing(&mut policy, config::package_version() + 1);
+    timelock::seal_approve(id_for_unlock(1000), &policy, &c); // would succeed at the right version
+    config::destroy_for_testing(policy);
     c.destroy_for_testing();
     s.end();
 }

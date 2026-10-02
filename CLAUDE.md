@@ -13,7 +13,13 @@ mirrors one client provider 1:1.
 
 - **One module per policy; no module is privileged.** Each policy is self-contained and exposes its
   own `seal_approve*` entry function. Adding a policy is a **new module** — existing modules are
-  never edited. This is the same peer-provider discipline as the client registry.
+  never edited. This is the same peer-provider discipline as the client registry. (The one
+  cross-cutting exception was adding the version gate below to every entry, 2026-10-02.)
+- **Version gating.** Every `seal_approve*` and `sealed_content::publish` takes the shared
+  `config::PolicyConfig` as its second argument and calls `config::check_version` first
+  (`E_WRONG_VERSION = 1` in `config`). An upgrade bumps `config::VERSION`; the `PolicyAdminCap` holder
+  then calls `migrate` (forward only, `E_NOT_UPGRADE = 2`). A new policy module must do the same.
+  Custody of both caps follows [CUSTODY.md](CUSTODY.md).
 - **`seal_approve*` must be side-effect free.** It is dry-run, not executed. It may only read/assert.
   Consequently a single-use `nft_gate` pass acts as **membership** (not consumed per decrypt); an
   exhausted (zero-use) pass is rejected.
@@ -27,9 +33,8 @@ mirrors one client provider 1:1.
   `is_valid_for`) without changing it. `sealed_content` is an **additive** discovery registry, also
   without touching `access_gate`.
 - **Move deps are git/local, never a registry.** `access_gate` is a git dependency pinned to an
-  immutable **commit SHA** — never a mutable tag. The testnet `0x42cc18…` links `access_gate`
-  `0x1a81ca…`, pinned to `dcd2d3c…` (the commit recording that publication). See the Move.toml
-  comment and README.
+  immutable **commit SHA** — never a mutable tag, and always the access-gate commit that records the
+  `access_gate` publication this package links against. See the Move.toml comment and README.
 - **`sealed_content::publish` bounds its strings** (`label` ≤ 256, `blob_id` ≤ 128, `seal_id` ≤ 256
   bytes; abort codes 1–3). `@meddleware/seal-client` mirrors the limits (`SEALED_CONTENT_LIMITS`) —
   change both together.
@@ -44,8 +49,10 @@ mirrors one client provider 1:1.
 | `sources/nft_gate.move` | `seal_approve` / `seal_approve_soulbound` — gate-pass membership policy. |
 | `sources/timelock.move` | `seal_approve` — Clock-based time-lock (`0x6`). |
 | `sources/sealed_content.move` | `publish(...)` + `SealedContentPublished` event — discovery pointers (not a policy). |
-| `tests/*` | 28 unit tests (nft_gate + timelock + sealed_content, incl. the string-length bounds). Run `sui move test --build-env testnet`. |
-| `Move.toml` / `Published.toml` | Package manifest + recorded publish. |
+| `sources/config.move` | Shared `PolicyConfig` version gate, `PolicyAdminCap`, `migrate`. |
+| `tests/*` | 37 unit tests (config + nft_gate + timelock + sealed_content, incl. the string-length bounds and a wrong-version test per entry). Run `sui move test --build-env testnet`. |
+| `scripts/*` | `publish.sh`, `transfer-authority.sh`, `make-immutable.sh` (direct or multisig), `multisig-address.sh` — see CUSTODY.md. |
+| `Move.toml` / `Published.toml` / `deployments.json` | Manifest, Sui's publish record, and our record (`policyConfigId`, custody). |
 
 The full module/identity/roadmap tables live in [README.md](README.md) — keep the two in sync.
 
@@ -73,8 +80,8 @@ The full module/identity/roadmap tables live in [README.md](README.md) — keep 
 - **Reference tables (curated from source — Move has no clean autodoc):** per-module `seal_approve*`
   signatures, identity layouts, and the `SealedContentPublished` event schema. These feed the docs
   site's Sealed Storage reference and the `dev.` deep-dive alike.
-- **Deploy runbook:** build/test/publish, the `access_gate` git-tag prerequisite + publishing order,
-  and recording `VITE_SEAL_PACKAGE_ID_{NET}` for the client.
+- **Deploy runbook:** build/test/`scripts/publish.sh`, the `access_gate` commit-SHA prerequisite +
+  publishing order, the custody lifecycle (CUSTODY.md), and `deployments.json` for the client.
 
 ### White-label (to write later)
 

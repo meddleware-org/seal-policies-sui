@@ -5,7 +5,7 @@
 **Project type:** Move package
 **Template:** AUDIT_TEMPLATE.md (2026-09-28) + AUDIT_TEMPLATE_SUI.md (2026-09-28)
 **Package:** `seal_policies` v0.0.3; edition 2024; framework rev `b0535f1f3a33` (Move.lock, testnet); `access_gate` pinned to commit `dcd2d3c2…` (records access_gate `0x1a81ca…`)
-**Deployment status:** testnet — `0x42cc181f851ef702c1fddc9b925553f03b71784edff49d80fbc260055f86d612` (published 2026-09-28 against access_gate `0x1a81ca…`; `Published.toml`; UpgradeCap `0x0ff7fa39…912f` **live**, compatible policy, publisher EOA). Superseded `0x9f0563…` (linked the pre-policy `0x0bedd0…`) and strays `0x67520f…`, `0x882fcc…` (self-bundled access_gate copies) are immutable — UpgradeCaps burned. Mainnet: unpublished.
+**Deployment status:** testnet — `0x61c4aaa431cc33a41a9db34621e2925fc8eb4e3b3f1d70eaeb8d8c2b73507e42` (published 2026-10-02 with version gating, D22, against access_gate `0xa55789…` from `b445876`; `PolicyConfig` `0xa5013eb4…3595`; UpgradeCap `0x12ee376f…5a74` **live**, publisher EOA, custody per CUSTODY.md). Superseded: `0x42cc18…d612` (published 2026-09-28 against `0x1a81ca…`; UpgradeCap `0x0ff7fa39…912f` burned when consumers move). Superseded `0x9f0563…` (linked the pre-policy `0x0bedd0…`) and strays `0x67520f…`, `0x882fcc…` (self-bundled access_gate copies) are immutable — UpgradeCaps burned. Mainnet: unpublished.
 **Review date:** 2026-09-18 (first pass) · re-verified and relocated 2026-09-28
 **Reviewer:** Internal review (Move contract reviewer)
 **Severity ceiling:** Low — policies are read-only `seal_approve*` dry-run gates and hold no capabilities or funds; Seal enforces object ownership before policy logic runs, so a policy is a second gate. The one lever with higher impact is the `UpgradeCap` (an upgrade could de-gate all sealed content) — tracked as a pre-mainnet gate.
@@ -78,7 +78,7 @@ Critical / High / Medium / Low / Info / Positive.
 ## Scope
 
 - **In scope:** `sources/{nft_gate,timelock,sealed_content}.move`, `tests/*`, `Move.toml`, `Move.lock`,
-  `Published.toml`, `scripts/{make-immutable,transfer-upgrade-cap}.sh`, `SECURITY.md`, `README.md`,
+  `Published.toml`, `scripts/{publish,transfer-authority,make-immutable,multisig-address}.sh`, `SECURITY.md`, `README.md`,
   `CLAUDE.md`, `docs/onchain/*`; on-chain state of both testnet packages and the UpgradeCap.
 - **Out of scope:** Seal and the key-server committee; `access-gate-sui` (own audit); the client
   encoder `@meddleware/seal-client` (own audit — shares the conformance vector).
@@ -146,7 +146,7 @@ gate works with it. No `SealedContent` exists under either package.
 
 ### F9 — Custody scripts did not verify which package's `UpgradeCap` they act on
 **Severity:** Medium   **Disposition:** RESOLVED
-**Where:** `scripts/make-immutable.sh`, `scripts/transfer-upgrade-cap.sh`.
+**Where:** `scripts/make-immutable.sh`, `scripts/transfer-authority.sh` (formerly `transfer-upgrade-cap.sh`).
 **Issue:** with an `UPGRADE_CAP_ID` override (or a stale `Published.toml`), the scripts would burn —
 irreversibly — or transfer whatever cap was given; the same deploy key also owns access-gate's
 `UpgradeCap`. No active-env or address-format check; no proof of burn.
@@ -254,7 +254,8 @@ imported, no dead links, lint/type-check green).
 
 | Network | Package ID | `UpgradeCap` ID | Status | Intended policy | Tooling |
 | --- | --- | --- | --- | --- | --- |
-| testnet | `0x42cc18…d612` (current) | `0x0ff7fa39…912f` | **held** by publisher EOA (policy 0) | burn or multisig — operator requirement before launch (OQ3) | `make-immutable.sh` / `transfer-upgrade-cap.sh` (dry-run default, `YES`, on-chain verification — F9) |
+| testnet | `0x61c4aa…7e42` (current) | `0x12ee376f…5a74` | **held** by publisher EOA | CUSTODY.md lifecycle: multisig, verify, multisig-signed burn on the planned date (maintainer decision 2026-10-01) | `transfer-authority.sh` / `make-immutable.sh` (dry-run default, `YES`, on-chain verification — F9; multisig path rehearsed on localnet 2026-10-02) |
+| testnet | `0x42cc18…d612` (superseded) | `0x0ff7fa39…912f` | held by publisher EOA until consumers move, then burned | — | `make-immutable.sh` with `UPGRADE_CAP_ID`/`PACKAGE_ID` |
 | testnet | `0x9f0563…231e` (superseded) | `0x20de…a1a0` | **burned** 2026-09-28 | — | — |
 | testnet | `0x67520f…88d3`, `0x882fcc…e8cc` (strays, broken) | `0xbecf98…c8af`, `0x507dd6d1…0689` | **burned** 2026-09-28 | — | — |
 | mainnet | — | — | unpublished | decide before publish (OQ3) | same scripts |

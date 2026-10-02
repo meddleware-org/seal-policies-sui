@@ -13,6 +13,7 @@
 /// `SealedContent` objects.
 module seal_policies::sealed_content;
 
+use seal_policies::config::{Self, PolicyConfig};
 use std::string::String;
 use sui::event;
 
@@ -59,14 +60,17 @@ public struct SealedContentPublished has copy, drop {
 
 /// Publish a sealed-content pointer for `gate_id`. Permissionless — the ciphertext is already
 /// gated by Seal, so a pointer grants nothing on its own. The three strings are length-bounded
-/// (`E_LABEL_TOO_LONG` / `E_BLOB_ID_TOO_LONG` / `E_SEAL_ID_TOO_LONG`).
+/// (`E_LABEL_TOO_LONG` / `E_BLOB_ID_TOO_LONG` / `E_SEAL_ID_TOO_LONG`), and `policy` must name this
+/// package version (`config::E_WRONG_VERSION`).
 entry fun publish(
+    policy: &PolicyConfig,
     gate_id: ID,
     blob_id: String,
     seal_id: String,
     label: String,
     ctx: &mut TxContext,
 ) {
+    config::check_version(policy);
     assert!(label.length() <= MAX_LABEL_BYTES, E_LABEL_TOO_LONG);
     assert!(blob_id.length() <= MAX_BLOB_ID_BYTES, E_BLOB_ID_TOO_LONG);
     assert!(seal_id.length() <= MAX_SEAL_ID_BYTES, E_SEAL_ID_TOO_LONG);

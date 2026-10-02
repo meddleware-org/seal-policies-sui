@@ -16,9 +16,13 @@
 /// Pausing: a paused gate still admits decryption by default. If the gate was created with the
 /// `pause_blocks_decryption` policy (`access_gate::create_gate_with_policy`), decryption is denied
 /// while it is paused (`E_GATE_PAUSED`) and resumes when it is unpaused.
+///
+/// Version gating: both entries take the shared `config::PolicyConfig` and abort with
+/// `config::E_WRONG_VERSION` under any other package version.
 module seal_policies::nft_gate;
 
 use access_gate::access_gate::{Self, Gate, AccessNFT, SoulboundAccessNFT};
+use seal_policies::config::{Self, PolicyConfig};
 
 /// Identity is not namespaced to this gate (its first 32 bytes must equal the gate object id).
 const E_ID_NOT_NAMESPACED: u64 = 1;
@@ -30,7 +34,8 @@ const E_EXHAUSTED: u64 = 3;
 const E_GATE_PAUSED: u64 = 4;
 
 /// Seal approval for a transferable access NFT.
-entry fun seal_approve(id: vector<u8>, gate: &Gate, nft: &AccessNFT) {
+entry fun seal_approve(id: vector<u8>, policy: &PolicyConfig, gate: &Gate, nft: &AccessNFT) {
+    config::check_version(policy);
     assert_namespaced(&id, gate);
     assert_not_paused_if_required(gate);
     assert!(access_gate::is_valid_for(nft, gate), E_WRONG_GATE);
@@ -38,7 +43,13 @@ entry fun seal_approve(id: vector<u8>, gate: &Gate, nft: &AccessNFT) {
 }
 
 /// Seal approval for a soulbound access NFT.
-entry fun seal_approve_soulbound(id: vector<u8>, gate: &Gate, nft: &SoulboundAccessNFT) {
+entry fun seal_approve_soulbound(
+    id: vector<u8>,
+    policy: &PolicyConfig,
+    gate: &Gate,
+    nft: &SoulboundAccessNFT,
+) {
+    config::check_version(policy);
     assert_namespaced(&id, gate);
     assert_not_paused_if_required(gate);
     assert!(access_gate::is_valid_for_soulbound(nft, gate), E_WRONG_GATE);

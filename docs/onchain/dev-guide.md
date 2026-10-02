@@ -20,13 +20,14 @@ The TypeScript side is `@meddleware/seal-client` (policy registry + `SealControl
 2. **Persist the identity verbatim.** The Seal identity (hex) is part of the ciphertext's
    `SealedManifest`; it cannot be recomputed because it contains a random nonce.
 3. **Call the matching approve variant.** `seal_approve` for `AccessNFT`,
-   `seal_approve_soulbound` for `SoulboundAccessNFT`; pass the gate and the requester's NFT as
-   object arguments.
+   `seal_approve_soulbound` for `SoulboundAccessNFT`; pass the shared `PolicyConfig`
+   (`deployments.json` → `policyConfigId`), the gate and the requester's NFT as object arguments.
 4. **Never treat `sealed_content` pointers as authenticated.** `publish` is permissionless and does
    not validate `gate_id` or the publisher's relationship to the gate. Filter or curate listings in
    the UI (e.g. only show pointers whose `publisher` is the gate's known operator).
-5. **Disambiguate aborts by `(module, code)`.** `nft_gate` and `timelock` both use code `1`, and
-   `access_gate` reuses small integers too.
+5. **Disambiguate aborts by `(module, code)`.** `nft_gate`, `timelock` and `config` all use code
+   `1`, and `access_gate` reuses small integers too. `config` code `1` (`E_WRONG_VERSION`) means the
+   called package version has been retired — rebuild the PTB against the current `published-at`.
 6. **Surface a paused gate distinctly.** `nft_gate` code `4` (`E_GATE_PAUSED`) means the gate is
    paused and its policy blocks decryption while paused — tell the user access resumes when the
    operator unpauses, rather than reporting a missing or invalid pass.
@@ -41,6 +42,7 @@ tx.moveCall({
   target: `${SEAL_POLICIES_PKG}::nft_gate::seal_approve`, // or seal_approve_soulbound
   arguments: [
     tx.pure.vector('u8', identityBytes), // [gate id (32)][nonce]
+    tx.object(POLICY_CONFIG_ID),         // shared version object (deployments.json)
     tx.object(GATE_ID),
     tx.object(NFT_ID),                   // must be owned by the requesting address
   ],
@@ -50,7 +52,8 @@ const txBytes = await tx.build({ client, onlyTransactionKind: true })
 ```
 
 For `timelock`: `target: ${PKG}::timelock::seal_approve`, arguments
-`[tx.pure.vector('u8', identityBytes), tx.object('0x6')]`.
+`[tx.pure.vector('u8', identityBytes), tx.object(POLICY_CONFIG_ID), tx.object('0x6')]`.
+`sealed_content::publish` takes `PolicyConfig` first as well.
 
 ## Discovering content
 
@@ -61,8 +64,9 @@ Each carries `blob_id` (Walrus ciphertext), `seal_id` (identity hex), `label` an
 
 A new policy is a **new module** with its own `seal_approve*` entry function — existing modules are
 never edited — plus one new provider in `seal-client` whose `buildId`/`buildApprove` mirror it.
-A policy function MUST take only immutable references, MUST NOT transfer, create, mutate or emit
-anything, and MUST length-check every identity byte it reads.
+A policy function MUST take `&PolicyConfig` second and call `config::check_version` first, MUST take
+only immutable references, MUST NOT transfer, create, mutate or emit anything, and MUST length-check
+every identity byte it reads.
 
 ## Liveness
 

@@ -34,6 +34,6 @@ provider.
   on-chain policies themselves have no liveness dependency beyond the chain (`timelock` reads the
   system `Clock` at `0x6`).
 
-Testnet package: `0x42cc181f851ef702c1fddc9b925553f03b71784edff49d80fbc260055f86d612` (used by
-Sealed Storage). It depends on the access-gate package `0x1a81ca…`. Content sealed under the superseded
-`0x9f0563…` still decrypts through that package. Mainnet: not yet published.
+Testnet package: `0x61c4aaa431cc33a41a9db34621e2925fc8eb4e3b3f1d70eaeb8d8c2b73507e42` (used by
+Sealed Storage; `PolicyConfig` `0xa5013eb407cac7e48b0b7f1cb5540b0e6115566dd01988b8f11fe77f4ebf3595`). It depends on the access-gate package `0xa55789…`. Content
+sealed under the superseded `0x42cc18…` and `0x9f0563…` still decrypts through those packages. Mainnet: not yet published.
