@@ -63,7 +63,8 @@ Each carries `blob_id` (Walrus ciphertext), `seal_id` (identity hex), `label` an
 ## Adding a policy
 
 A new policy is a **new module** with its own `seal_approve*` entry function — existing modules are
-never edited — plus one new provider in `seal-client` whose `buildId`/`buildApprove` mirror it.
+never edited — plus one new provider in `seal-client` whose `buildId`/`buildApprove` mirror it and whose
+`verifyId` checks the identity layout (required; `decrypt` calls it before every approve).
 A policy function MUST take `&PolicyConfig` second and call `config::check_version` first, MUST take
 only immutable references, MUST NOT transfer, create, mutate or emit anything, and MUST length-check
 every identity byte it reads.
