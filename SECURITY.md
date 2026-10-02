@@ -56,9 +56,9 @@ Known, intentional properties (not vulnerabilities):
 - **Upgrade authority.** Each full release follows `CUSTODY.md`: the UpgradeCap moves to the custody
   multisig after publishing and the multisig burns it on a planned date after a verification window.
   The testnet package `0x61c4aa…` (version-gated, 2026-10-02) has a live `UpgradeCap` (`0x12ee376f…5a74`,
-  publisher EOA), recorded in `deployments.json`. The superseded `0x42cc18…` (cap `0x0ff7fa39…912f`) has
-  its cap burned once consumers have moved. Older superseded
-  and stray packages are immutable (caps burned 2026-09-28).
+  publisher EOA), recorded in `deployments.json`. The superseded `0x42cc18…` is immutable
+  (its cap `0x0ff7fa39…912f` was burned on 2026-10-02), as are the older superseded and stray
+  packages (caps burned 2026-09-28).
 
 ## Supported versions
 
