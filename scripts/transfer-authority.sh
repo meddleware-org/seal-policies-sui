@@ -71,10 +71,14 @@ preflight() {
   fi
 }
 
-PACKAGE_ID="${PACKAGE_ID:-$(record SEAL_POLICIES_PACKAGE_ID)}"
+# After an upgrade the UpgradeCap names the LATEST package, so the package id comes from Published.toml first
+# (as make-immutable.sh does); the .env record (the original publish) is only a fallback.
 PACKAGE_ID="${PACKAGE_ID:-$(published_field published-at)}"
+PACKAGE_ID="${PACKAGE_ID:-$(record SEAL_POLICIES_PACKAGE_ID)}"
 ORIGINAL_ID="${ORIGINAL_ID:-$(published_field original-id)}"
 ORIGINAL_ID="${ORIGINAL_ID:-$PACKAGE_ID}"
+# The committed record (deployments.json, written by publish.sh) wins over the git-ignored .env.
+POLICY_ADMIN_CAP_ID="${POLICY_ADMIN_CAP_ID:-$(jq -r --arg n "$NETWORK" '.[$n].policyAdminCapId // empty' "$REPO_ROOT/deployments.json" 2>/dev/null || true)}"
 POLICY_ADMIN_CAP_ID="${POLICY_ADMIN_CAP_ID:-$(record SEAL_POLICIES_POLICY_ADMIN_CAP_ID)}"
 UPGRADE_CAP_ID="${UPGRADE_CAP_ID:-$(record SEAL_POLICIES_UPGRADE_CAP_ID)}"
 UPGRADE_CAP_ID="${UPGRADE_CAP_ID:-$(published_field upgrade-capability)}"
@@ -83,6 +87,14 @@ UPGRADE_CAP_ID="${UPGRADE_CAP_ID:-$(published_field upgrade-capability)}"
 
 preflight
 ACTIVE="$(sui client active-address)"
+# The active address must be the expected holder of these objects (EXPECTED_SIGNER; mainnet requires it).
+if [ -n "${EXPECTED_SIGNER:-}" ]; then
+  [[ "$EXPECTED_SIGNER" =~ ^0x[0-9a-fA-F]{1,64}$ ]] || { log "ERROR: EXPECTED_SIGNER must be a 0x-prefixed address."; exit 1; }
+  [ "$(long_addr "$EXPECTED_SIGNER")" = "$(long_addr "$ACTIVE")" ] \
+    || { log "ERROR: the active address $ACTIVE is not EXPECTED_SIGNER $EXPECTED_SIGNER."; exit 1; }
+elif [ "$NETWORK" = "mainnet" ]; then
+  log "ERROR: mainnet requires EXPECTED_SIGNER."; exit 1
+fi
 
 # verify_object <id> <label> <exact type> [<package the object must control>]
 verify_object() {
@@ -132,10 +144,19 @@ for i in "${!IDS[@]}"; do
   log "OK    ${LABELS[$i]} transferred (tx $(jq -r '.digest // "?"' <<<"$(awk '/^{/,0' <<<"$OUT")"))."
 done
 
+# Re-read every object: the transfer succeeded only if the new owner is the multisig.
+for i in "${!IDS[@]}"; do
+  NEW_OWNER="$(sui client object "${IDS[$i]}" --json 2>/dev/null | jq -r '.owner.AddressOwner // empty')"
+  [ "$(long_addr "$NEW_OWNER")" = "$(long_addr "$MULTISIG_ADDRESS")" ] \
+    || { log "ERROR: ${LABELS[$i]} ${IDS[$i]} is owned by '${NEW_OWNER:-<unknown>}' after the transfer, not $MULTISIG_ADDRESS. Not recording the handoff."; exit 1; }
+  log "OK    ${LABELS[$i]} is now owned by the multisig."
+done
+
 DEPLOYMENTS="$REPO_ROOT/deployments.json"
 if [ "$NETWORK" != "localnet" ] && [ -f "$DEPLOYMENTS" ]; then
   jq --arg n "$NETWORK" --arg ms "$MULTISIG_ADDRESS" --arg cap "$INCLUDE_UPGRADE_CAP" \
     '.[$n].custody.multisigAddress = $ms
+     | .[$n].policyAdminCapOwner = $ms
      | if $cap == "1" then .[$n].custody.upgradeCapOwner = $ms else . end' \
     "$DEPLOYMENTS" > "$DEPLOYMENTS.tmp" && mv "$DEPLOYMENTS.tmp" "$DEPLOYMENTS"
   log "Recorded the multisig in deployments.json — set custody.plannedBurnDate and commit it."

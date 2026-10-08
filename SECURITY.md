@@ -4,7 +4,8 @@
 
 This policy covers security issues in:
 
-- The Move policy modules (`sources/nft_gate.move`, `sources/timelock.move`) — a bypass that lets an
+- The Move policy modules (`sources/nft_gate.move`, `sources/timelock.move`) and the version gate
+  (`sources/config.move`, which invariant 6 relies on) — a bypass that lets an
   unauthorized party pass `seal_approve*`, a cross-gate namespacing escape, a side effect in a
   dry-run policy, or a timelock parsed to the wrong unlock time
 - The discovery registry (`sources/sealed_content.move`) as it affects integrity of published
@@ -21,7 +22,8 @@ It does not cover:
 - The `access-gate-sui` package it depends on (see that repo's `SECURITY.md`)
 - The client-side identity encoder `@meddleware/seal-client` (`bytes.ts`) — the byte layouts here
   and there must match bit-for-bit; a client-only drift is reported against that package
-- Custody of the `UpgradeCap` and `PolicyAdminCap` (the multisig process in `CUSTODY.md`)
+- Custody of the `UpgradeCap` and `PolicyAdminCap` (the multisig process in `CUSTODY.md`), and the custody
+  scripts themselves (`publish.sh`, `transfer-authority.sh`, `upgrade.sh`, `migrate.sh`, `make-immutable.sh`)
 
 ## Security model (invariants)
 
@@ -44,6 +46,22 @@ treated as high severity:
    `migrate` (needs `PolicyAdminCap`) only moves forward and retires every older version at once.
 
 Known, intentional properties (not vulnerabilities):
+
+- **A transferable pass can be frozen into public access.** `AccessNFT` has `store`, so its holder can
+  `public_freeze_object` or share it; a frozen pass is an immutable object anyone can present, and
+  `nft_gate::seal_approve` approves it (tested: `a_frozen_transferable_pass_still_approves_for_anyone`). Only
+  a soulbound pass (`SoulboundAccessNFT`, no `store`) cannot be frozen or shared by its holder. **Gates
+  used for Sealed Storage should be soulbound**; `@meddleware/seal-client` refuses to seal to a transferable
+  gate unless asked to.
+- **Content sealed under a superseded package is unsupported.** Each `seal_policies` original id is its own Seal
+  namespace; the clients serve the current one only.
+- **Coupled releases.** `nft_gate` reads `access_gate` through its linkage: an `access_gate` *upgrade* that
+  changes a view does not reach `nft_gate` until this package is upgraded with the new linkage, and an
+  `access_gate` *republish* makes the new gates incompatible types, so `seal_policies` is republished against
+  it (CUSTODY.md, "Coupled releases").
+- **Timelock depends on each key server's clock.** Servers dry-run against their own full node's `Clock`, so
+  the unlock instant is approximate (seconds) and servers may briefly disagree around it; there is no upper
+  bound on `unlock_ms`.
 
 - **`sealed_content::publish` is permissionless and is not a policy.** Anyone can publish a pointer
   under any `gate_id` (existence and admin rights are not checked), with any label. Pointers grant

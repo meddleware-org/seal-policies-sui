@@ -25,6 +25,15 @@
 #   - mainnet additionally requires MAINNET_CONFIRM=1 (a skipped run exits 78).
 # An existing .env.<network> is kept as .env.<network>.<timestamp>.bak, never overwritten.
 #
+# Also checked before anything is signed (testnet/mainnet):
+#   - EXPECTED_SIGNER (0x… address), when set, must equal the active address; mainnet requires it;
+#   - the active address holds at least GAS_BUDGET MIST;
+#   - the access_gate dependency pinned in Move.toml has a publication on THIS chain (its Published.toml at
+#     the pinned commit), so the package links the real access_gate and not a stray copy.
+# After publishing: the new package's linkage table must map access_gate's original id to that
+# publication, and the package must contain no module of its own named access_gate. deployments.json is
+# written only after both pass.
+#
 # Env: GAS_BUDGET (default 200000000).
 # -----------------------------------------------------------------------------
 set -euo pipefail
@@ -80,7 +89,33 @@ if [ "$NETWORK" = "mainnet" ] && [ "${MAINNET_CONFIRM:-}" != "1" ]; then
   exit 78
 fi
 DEPLOYER=$(sui client active-address)
-log "Preflight OK: env=${NETWORK} chain=${CHAIN:-n/a} cli=${CLI_VER} signer=${DEPLOYER}"
+norm_addr() { local h="${1#0x}"; printf '0x%064s' "${h,,}" | tr ' ' 0; }
+if [ -n "${EXPECTED_SIGNER:-}" ]; then
+  [[ "$EXPECTED_SIGNER" =~ ^0x[0-9a-fA-F]{1,64}$ ]] || { log "ERROR: EXPECTED_SIGNER must be a 0x-prefixed address."; exit 1; }
+  [ "$(norm_addr "$EXPECTED_SIGNER")" = "$(norm_addr "$DEPLOYER")" ] \
+    || { log "ERROR: the active address ${DEPLOYER} is not EXPECTED_SIGNER ${EXPECTED_SIGNER}."; exit 1; }
+elif [ "$NETWORK" = "mainnet" ]; then
+  log "ERROR: mainnet requires EXPECTED_SIGNER."; exit 1
+fi
+BALANCE=$(sui client gas --json 2>/dev/null | jq -r '([.gasCoins[]?.mistBalance] | add // 0) + (.addressMistBalance // 0)')
+[[ "$BALANCE" =~ ^[0-9]+$ ]] || { log "ERROR: could not read the gas balance of ${DEPLOYER}."; exit 1; }
+[ "$BALANCE" -ge "$GAS_BUDGET" ] || { log "ERROR: ${DEPLOYER} holds ${BALANCE} MIST, less than GAS_BUDGET=${GAS_BUDGET}."; exit 1; }
+log "Preflight OK: env=${NETWORK} chain=${CHAIN:-n/a} cli=${CLI_VER} signer=${DEPLOYER} balance=${BALANCE} MIST"
+
+# The access_gate publication this package links (testnet/mainnet): read from the dependency's own
+# Published.toml at the commit Move.toml pins, and require it to exist on this chain.
+AG_ORIGINAL=""; AG_PUBLISHED=""
+if [ "$NETWORK" != "localnet" ]; then
+  AG_REV=$(sed -n 's/^access_gate = .*rev = "\([0-9a-f]\{40\}\)".*/\1/p' "$PKG_DIR/Move.toml" | head -1)
+  [ -n "$AG_REV" ] || { log "ERROR: Move.toml does not pin access_gate to a 40-hex commit (a local or branch dependency cannot be published)."; exit 1; }
+  AG_TOML=$(curl -fsSL --max-time 20 "https://raw.githubusercontent.com/meddleware-org/access-gate-sui/${AG_REV}/Published.toml") \
+    || { log "ERROR: could not read access-gate-sui Published.toml at ${AG_REV}."; exit 1; }
+  ag_field() { awk -v s="[published.${NETWORK}]" -v k="$1" '$0==s{f=1;next} /^\[/{f=0} f && $0 ~ "^[[:space:]]*" k "[[:space:]]*="{gsub(/.*= *"|".*/,"");print;exit}' <<<"$AG_TOML"; }
+  AG_ORIGINAL=$(ag_field original-id); AG_PUBLISHED=$(ag_field published-at)
+  [ -n "$AG_ORIGINAL" ] && [ -n "$AG_PUBLISHED" ] || { log "ERROR: access-gate-sui ${AG_REV} records no ${NETWORK} publication."; exit 1; }
+  sui client object "$AG_PUBLISHED" --json >/dev/null 2>&1 || { log "ERROR: access_gate ${AG_PUBLISHED} does not exist on ${NETWORK}."; exit 1; }
+  log "access_gate dependency: ${AG_PUBLISHED} (original ${AG_ORIGINAL}) at ${AG_REV:0:7}"
+fi
 
 # ── Publish ──────────────────────────────────────────────────────────────────────
 # A network with a Published.toml entry is already published; `sui client publish` refuses until the
@@ -121,6 +156,17 @@ for _v in UPGRADE_CAP_ID POLICY_ADMIN_CAP_ID POLICY_CONFIG_ID; do
   [ -n "${!_v}" ] || { log "ERROR: could not find exactly one created object for ${_v}"; exit 1; }
 done
 
+# Linkage: the published package must link the expected access_gate and bundle none of its own.
+if [ "$NETWORK" != "localnet" ]; then
+  PKG_JSON=$(sui client object "$PACKAGE_ID" --json 2>/dev/null) || { log "ERROR: cannot read the published package ${PACKAGE_ID}."; exit 1; }
+  LINKED=$(jq -r --arg o "$(norm_addr "$AG_ORIGINAL")" '.content.Package.linkage_table[$o].upgraded_id // empty' <<<"$PKG_JSON")
+  [ -n "$LINKED" ] && [ "$(norm_addr "$LINKED")" = "$(norm_addr "$AG_PUBLISHED")" ] \
+    || { log "ERROR: ${PACKAGE_ID} does not link access_gate ${AG_PUBLISHED} (linkage says '${LINKED:-<none>}'). DO NOT USE IT: burn its UpgradeCap."; exit 1; }
+  jq -e '.content.Package.module_map | has("access_gate") | not' >/dev/null <<<"$PKG_JSON" \
+    || { log "ERROR: ${PACKAGE_ID} bundles its own access_gate module. DO NOT USE IT: burn its UpgradeCap."; exit 1; }
+  log "Linkage OK: ${PACKAGE_ID} links access_gate ${AG_PUBLISHED}."
+fi
+
 if [ -f "$ENV_FILE" ]; then
   BACKUP="${ENV_FILE}.$(date -u +%Y%m%dT%H%M%SZ).bak"
   mv "$ENV_FILE" "$BACKUP"
@@ -139,8 +185,10 @@ if [ "$NETWORK" != "localnet" ]; then
   # A fresh publish resets the custody record (CUSTODY.md); a multisig chosen earlier is kept.
   DEPLOYMENTS="$PKG_DIR/deployments.json"
   [ -f "$DEPLOYMENTS" ] || echo '{}' > "$DEPLOYMENTS"
-  jq --arg n "$NETWORK" --arg id "$POLICY_CONFIG_ID" --arg owner "$DEPLOYER" \
+  jq --arg n "$NETWORK" --arg id "$POLICY_CONFIG_ID" --arg owner "$DEPLOYER" --arg pac "$POLICY_ADMIN_CAP_ID" \
     '.[$n].policyConfigId = $id
+     | .[$n].policyAdminCapId = $pac
+     | .[$n].policyAdminCapOwner = $owner
      | .[$n].custody = { multisigAddress: (.[$n].custody.multisigAddress // null),
                          upgradeCapOwner: $owner, plannedBurnDate: null, burnedAt: null }' \
     "$DEPLOYMENTS" > "$DEPLOYMENTS.tmp"

@@ -51,14 +51,33 @@ those values with the address. It must hold a little SUI for gas.
 
 ## Upgrading during the verification window
 
+Scripts do the checking and the unsigned transactions; the multisig signs (see the steps above).
+
 1. Bump `VERSION` in `sources/config.move` and make the change (struct layouts and `entry`
    signatures used by key servers stay compatible, or the change ships as a fresh package).
-2. `sui client upgrade --upgrade-capability <cap> --sender <multisig> --serialize-unsigned-transaction`,
-   signed as above.
-3. Call `config::migrate(&PolicyAdminCap, &mut PolicyConfig)` from the multisig. Every older version's
+2. `NETWORK=<network> MULTISIG_ADDRESS=0x… bash scripts/upgrade.sh` refuses unless `VERSION` is greater than the
+   version the on-chain `PolicyConfig` names and the multisig owns the UpgradeCap, then writes the unsigned
+   upgrade transaction. Sign and execute it as above, and record the new `published-at` in `Published.toml`.
+3. `NETWORK=<network> MULTISIG_ADDRESS=0x… bash scripts/migrate.sh` writes the unsigned
+   `config::migrate(&PolicyAdminCap, &mut PolicyConfig)` call; execute it as the multisig, right away (a slow
+   migrate extends the window in which a known-bad version keeps approving). Every older version's
    `seal_approve*` and `publish` now abort with `config::E_WRONG_VERSION`.
-4. Release the npm package and `@meddleware/seal-client` with the new `published-at`. Identities stay
+4. `NETWORK=<network> bash scripts/migrate.sh --verify` checks that the `PolicyConfig` names `VERSION`, that the
+   latest package has the expected modules and no bundled `access_gate`, and prints the consumer steps.
+5. Release the npm package and `@meddleware/seal-client` with the new `published-at`. Identities stay
    under the original id, so sealed content needs no re-sealing.
+
+## Coupled releases (`access_gate`)
+
+`nft_gate` links `access_gate` at the version recorded in this package's linkage, and `access_gate`'s version
+gate does not cover views.
+
+- **`access_gate` upgrade** that changes a view's semantics (`is_valid_for*`, `uses_remaining*`,
+  `gate_is_paused`, `gate_pause_blocks_decryption`): decide whether `seal_policies` must be upgraded to re-link,
+  and do so in the same window.
+- **`access_gate` republish** (a new original id): the new gates are different types. Publish `seal_policies`
+  against it (Move.toml pins the access-gate commit that records that publication; `publish.sh` checks the
+  linkage) and re-seal content; the old package keeps working only for content already sealed to the old gates.
 
 ## Rehearsal
 

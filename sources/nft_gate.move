@@ -14,8 +14,17 @@
 /// here (it is not consumed per decryption) — we only reject a pass already exhausted to zero.
 ///
 /// Pausing: a paused gate still admits decryption by default. If the gate was created with the
-/// `pause_blocks_decryption` policy (`access_gate::create_gate_with_policy`), decryption is denied
-/// while it is paused (`E_GATE_PAUSED`) and resumes when it is unpaused.
+/// `pause_blocks_decryption` policy (passed to `access_gate::create_gate` / `create_free_gate`), decryption
+/// is denied while it is paused (`E_GATE_PAUSED`) and resumes when it is unpaused. Such a gate must also have
+/// `freeze_requires_unpaused` (`access_gate::new_gate_policy` enforces it), so it can never be frozen while
+/// paused: its content cannot be made permanently undecryptable by pausing and then freezing.
+///
+/// Check order: version, namespace (`E_ID_NOT_NAMESPACED`), pause (`E_GATE_PAUSED`), then pass validity
+/// (`E_WRONG_GATE`) and uses (`E_EXHAUSTED`).
+///
+/// Known property (Seal gives confidentiality only to an object's owner): a holder of a *transferable* pass
+/// (`AccessNFT` has `store`) can freeze or share it, after which anyone can present it. Gates used for Sealed
+/// Storage should be soulbound; see SECURITY.md.
 ///
 /// Version gating: both entries take the shared `config::PolicyConfig` and abort with
 /// `config::E_WRONG_VERSION` under any other package version.

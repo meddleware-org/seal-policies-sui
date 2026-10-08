@@ -2,7 +2,9 @@
 
 // Abort codes are referenced by literal in #[expected_failure] because module-private
 // constants are not cross-module referenceable in that attribute:
-//   E_ID_NOT_NAMESPACED = 1, E_WRONG_GATE = 2, E_EXHAUSTED = 3  (see nft_gate.move).
+//   E_ID_NOT_NAMESPACED = 1, E_WRONG_GATE = 2, E_EXHAUSTED = 3, E_GATE_PAUSED = 4  (see nft_gate.move).
+// Every such test names its `location`: the same small codes exist in `config`, `timelock` and `access_gate`,
+// and a location-less test passes on ANY abort with that code.
 #[test_only]
 module seal_policies::nft_gate_tests;
 
@@ -163,7 +165,7 @@ fun conformance_gate_id_prefix_layout() {
 }
 
 #[test]
-#[expected_failure(abort_code = 2)] // E_WRONG_GATE
+#[expected_failure(abort_code = 2, location = seal_policies::nft_gate)] // E_WRONG_GATE
 fun approve_with_foreign_nft_aborts() {
     let mut s = ts::begin(CREATOR);
     make_gate(&mut s, false, 0); // gate A
@@ -200,7 +202,7 @@ fun approve_with_foreign_nft_aborts() {
 }
 
 #[test]
-#[expected_failure(abort_code = 1)] // E_ID_NOT_NAMESPACED
+#[expected_failure(abort_code = 1, location = seal_policies::nft_gate)] // E_ID_NOT_NAMESPACED
 fun approve_with_wrong_namespace_aborts() {
     let mut s = ts::begin(CREATOR);
     make_gate(&mut s, false, 0);
@@ -250,7 +252,7 @@ fun approve_with_exact_32_byte_id_succeeds() {
 // Boundary: an id shorter than 32 bytes aborts with E_ID_NOT_NAMESPACED immediately
 // (does not read past bounds or produce a silent gate-mismatch).
 #[test]
-#[expected_failure(abort_code = 1)] // E_ID_NOT_NAMESPACED
+#[expected_failure(abort_code = 1, location = seal_policies::nft_gate)] // E_ID_NOT_NAMESPACED
 fun approve_with_7_byte_id_aborts() {
     let mut s = ts::begin(CREATOR);
     make_gate(&mut s, false, 0);
@@ -271,7 +273,7 @@ fun approve_with_7_byte_id_aborts() {
 }
 
 #[test]
-#[expected_failure(abort_code = 3)] // E_EXHAUSTED
+#[expected_failure(abort_code = 3, location = seal_policies::nft_gate)] // E_EXHAUSTED
 fun approve_with_exhausted_pass_aborts() {
     let mut s = ts::begin(CREATOR);
     make_gate(&mut s, false, 1); // single-use, 1 use, auto_burn = false → returns 0-use receipt
@@ -297,7 +299,7 @@ fun approve_with_exhausted_pass_aborts() {
 // ── Soulbound variants of the abort paths ────────────────────────────────────────
 
 #[test]
-#[expected_failure(abort_code = 2)] // E_WRONG_GATE
+#[expected_failure(abort_code = 2, location = seal_policies::nft_gate)] // E_WRONG_GATE
 fun approve_soulbound_with_foreign_nft_aborts() {
     let mut s = ts::begin(CREATOR);
     make_gate(&mut s, true, 0);
@@ -320,7 +322,7 @@ fun approve_soulbound_with_foreign_nft_aborts() {
 }
 
 #[test]
-#[expected_failure(abort_code = 3)] // E_EXHAUSTED
+#[expected_failure(abort_code = 3, location = seal_policies::nft_gate)] // E_EXHAUSTED
 fun approve_soulbound_with_exhausted_pass_aborts() {
     let mut s = ts::begin(CREATOR);
     make_gate(&mut s, true, 1);
@@ -384,7 +386,8 @@ fun approve_on_paused_gate_still_succeeds() {
 // ── Gate policy: pause_blocks_decryption ─────────────────────────────────────────
 
 fun make_policy_gate(s: &mut ts::Scenario, pause_blocks_decryption: bool) {
-    make_gate_with(s, false, 0, access_gate::new_gate_policy(false, false, pause_blocks_decryption, false));
+    // A policy that blocks decryption while paused must also forbid freezing while paused (access_gate enforces it).
+    make_gate_with(s, false, 0, access_gate::new_gate_policy(pause_blocks_decryption, false, pause_blocks_decryption, false));
 }
 
 // Airdrop a pass, pause the gate, then approve as the holder.
@@ -406,7 +409,7 @@ fun approve_while_paused(pause_blocks_decryption: bool) {
 }
 
 #[test]
-#[expected_failure(abort_code = 4)] // E_GATE_PAUSED
+#[expected_failure(abort_code = 4, location = seal_policies::nft_gate)] // E_GATE_PAUSED
 fun approve_denied_while_paused_when_policy_blocks_decryption() {
     approve_while_paused(true);
 }
@@ -434,6 +437,112 @@ fun approve_resumes_after_unpause_when_policy_blocks_decryption() {
     s.end();
 }
 
+
+// Pause the newest gate (`cap` is its AdminCap) with the newest PlatformConfig.
+fun pause(s: &mut ts::Scenario, cap: &AdminCap, gate: &mut Gate) {
+    let platform = s.take_shared<PlatformConfig>();
+    access_gate::set_paused(cap, gate, &platform, true);
+    ts::return_shared(platform);
+}
+
+// Check order: a paused policy gate presented with a foreign pass aborts E_GATE_PAUSED (4), not E_WRONG_GATE (2).
+#[test]
+#[expected_failure(abort_code = 4, location = seal_policies::nft_gate)] // E_GATE_PAUSED, before the pass is checked
+fun paused_policy_gate_with_foreign_pass_aborts_paused_first() {
+    let mut s = ts::begin(CREATOR);
+    make_gate(&mut s, false, 0); // gate A: the pass comes from here
+    s.next_tx(CREATOR);
+    let gate_a = s.take_shared<Gate>();
+    let cap_a = s.take_from_sender<AdminCap>();
+    grant(&mut s, &cap_a, &gate_a, HOLDER);
+    s.return_to_sender(cap_a);
+    ts::return_shared(gate_a);
+
+    s.next_tx(CREATOR);
+    make_policy_gate(&mut s, true); // gate B: pause blocks decryption
+    s.next_tx(CREATOR);
+    let mut gate_b = s.take_shared<Gate>();
+    let cap_b = s.take_from_sender<AdminCap>();
+    pause(&mut s, &cap_b, &mut gate_b);
+    s.return_to_sender(cap_b);
+
+    s.next_tx(HOLDER);
+    let nft = s.take_from_sender<AccessNFT>(); // gate A's pass
+    approve(&mut s, id_for(&gate_b), &gate_b, &nft);
+    s.return_to_sender(nft);
+    ts::return_shared(gate_b);
+    s.end();
+}
+
+// Freezing a gate never affects decryption: a pass still approves after `make_gate_immutable`.
+#[test]
+fun approve_succeeds_after_the_gate_is_frozen() {
+    let mut s = ts::begin(CREATOR);
+    make_policy_gate(&mut s, true);
+    s.next_tx(CREATOR);
+    let mut gate = s.take_shared<Gate>();
+    let cap = s.take_from_sender<AdminCap>();
+    let platform = s.take_shared<PlatformConfig>();
+    access_gate::airdrop(&cap, &gate, &platform, coin::mint_for_testing<SUI>(0, s.ctx()), HOLDER, s.ctx());
+    access_gate::make_gate_immutable(cap, &mut gate, &platform, s.ctx()); // consumes the cap; gate is unpaused
+    ts::return_shared(platform);
+    assert!(gate.gate_is_frozen(), 0);
+
+    s.next_tx(HOLDER);
+    let nft = s.take_from_sender<AccessNFT>();
+    approve(&mut s, id_for(&gate), &gate, &nft);
+    s.return_to_sender(nft);
+    ts::return_shared(gate);
+    s.end();
+}
+
+// F21: a gate whose pause blocks decryption cannot be frozen while paused (so its content can never be made
+// permanently undecryptable by pausing and then freezing). access_gate aborts E_FREEZE_WHILE_PAUSED (10).
+#[test]
+#[expected_failure(abort_code = 10, location = access_gate)] // E_FREEZE_WHILE_PAUSED
+fun a_blocking_policy_gate_cannot_be_frozen_while_paused() {
+    let mut s = ts::begin(CREATOR);
+    make_policy_gate(&mut s, true);
+    s.next_tx(CREATOR);
+    let mut gate = s.take_shared<Gate>();
+    let cap = s.take_from_sender<AdminCap>();
+    let platform = s.take_shared<PlatformConfig>();
+    access_gate::set_paused(&cap, &mut gate, &platform, true);
+    access_gate::make_gate_immutable(cap, &mut gate, &platform, s.ctx());
+    ts::return_shared(platform);
+    ts::return_shared(gate);
+    s.end();
+}
+
+// F16 (known property): a holder can freeze a TRANSFERABLE pass (`AccessNFT` has `store`), after which it is an
+// immutable object anyone can present, and the policy approves it. Sealed Storage gates should be soulbound.
+#[test]
+fun a_frozen_transferable_pass_still_approves_for_anyone() {
+    let mut s = ts::begin(CREATOR);
+    make_gate(&mut s, false, 0);
+    s.next_tx(CREATOR);
+    let gate = s.take_shared<Gate>();
+    let cap = s.take_from_sender<AdminCap>();
+    grant(&mut s, &cap, &gate, HOLDER);
+    s.return_to_sender(cap);
+    ts::return_shared(gate);
+
+    s.next_tx(HOLDER);
+    let nft = s.take_from_sender<AccessNFT>();
+    transfer::public_freeze_object(nft);
+
+    s.next_tx(@0xBAD); // a stranger who never owned the pass
+    let gate = s.take_shared<Gate>();
+    let frozen = s.take_immutable<AccessNFT>();
+    approve(&mut s, id_for(&gate), &gate, &frozen);
+    ts::return_immutable(frozen);
+    ts::return_shared(gate);
+    s.end();
+}
+
+// A soulbound pass cannot be frozen or shared by its holder: the type has no `store`, so only this
+// package's functions can move it. (There is nothing to call here; the compiler is the test: this module
+// would not build if `transfer::public_freeze_object(soulbound)` type-checked.)
 
 // ── Version gate ─────────────────────────────────────────────────────────────────
 

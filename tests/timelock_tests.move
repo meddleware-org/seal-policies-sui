@@ -42,7 +42,7 @@ fun after_unlock_succeeds() {
 }
 
 #[test]
-#[expected_failure(abort_code = 2)] // E_TOO_EARLY
+#[expected_failure(abort_code = 2, location = seal_policies::timelock)] // E_TOO_EARLY
 fun before_unlock_aborts() {
     let mut s = ts::begin(U);
     let mut c = clock::create_for_testing(s.ctx());
@@ -75,7 +75,7 @@ fun conformance_unlock_ms_big_endian_matches_vector() {
 }
 
 #[test]
-#[expected_failure(abort_code = 1)] // E_BAD_ID
+#[expected_failure(abort_code = 1, location = seal_policies::timelock)] // E_BAD_ID
 fun short_id_aborts() {
     let mut s = ts::begin(U);
     let c = clock::create_for_testing(s.ctx());

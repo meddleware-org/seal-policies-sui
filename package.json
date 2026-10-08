@@ -30,7 +30,7 @@
     "Move.lock",
     "Published.toml",
     "sources/",
-    "docs/",
+    "docs/onchain/",
     "README.md",
     "SECURITY.md",
     "LICENSE",

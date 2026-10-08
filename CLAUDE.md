@@ -50,8 +50,8 @@ mirrors one client provider 1:1.
 | `sources/timelock.move` | `seal_approve` — Clock-based time-lock (`0x6`). |
 | `sources/sealed_content.move` | `publish(...)` + `SealedContentPublished` event — discovery pointers (not a policy). |
 | `sources/config.move` | Shared `PolicyConfig` version gate, `PolicyAdminCap`, `migrate`. |
-| `tests/*` | 37 unit tests (config + nft_gate + timelock + sealed_content, incl. the string-length bounds and a wrong-version test per entry). Run `sui move test --build-env testnet`. |
-| `scripts/*` | `publish.sh`, `transfer-authority.sh`, `make-immutable.sh` (direct or multisig), `multisig-address.sh` — see CUSTODY.md. |
+| `tests/*` | 41 unit tests (config + nft_gate + timelock + sealed_content, incl. the string-length bounds and a wrong-version test per entry). Run `sui move test --build-env testnet`. |
+| `scripts/*` | `publish.sh` (checks the access_gate linkage), `transfer-authority.sh`, `upgrade.sh`, `migrate.sh` (`--verify`), `make-immutable.sh` (direct or multisig), `multisig-address.sh` — see CUSTODY.md. |
 | `Move.toml` / `Published.toml` / `deployments.json` | Manifest, Sui's publish record, and our record (`policyConfigId`, custody). |
 
 The full module/identity/roadmap tables live in [README.md](README.md) — keep the two in sync.

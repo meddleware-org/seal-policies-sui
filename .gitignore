@@ -27,3 +27,6 @@ node_modules/
 # Unsigned custody transactions written by scripts/make-immutable.sh
 custody-out/
 Published.toml.*.bak
+# Unsigned upgrade / migrate transactions written by scripts/upgrade.sh and scripts/migrate.sh
+upgrade.*.tx.b64*
+migrate.*.tx.b64*

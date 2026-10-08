@@ -13,7 +13,7 @@ version first.
 
 | Function | Signature | Checks, in order |
 | --- | --- | --- |
-| `seal_approve` | `entry fun seal_approve(id: vector<u8>, policy: &PolicyConfig, gate: &Gate, nft: &AccessNFT)` | version (else `config` 1); `id` ≥ 32 bytes and `id[0..32] == object::id_bytes(gate)` (else 1); `access_gate::is_valid_for(nft, gate)` (else 2); not (paused and policy `pause_blocks_decryption`) (else 4); single-use pass has uses > 0 (else 3) |
+| `seal_approve` | `entry fun seal_approve(id: vector<u8>, policy: &PolicyConfig, gate: &Gate, nft: &AccessNFT)` | in this order: version (else `config` 1); `id` ≥ 32 bytes and `id[0..32] == object::id_bytes(gate)` (else 1); not (paused and policy `pause_blocks_decryption`) (else 4); `access_gate::is_valid_for(nft, gate)` (else 2); single-use pass has uses > 0 (else 3). So a paused policy gate presented with a foreign pass aborts 4, not 2. |
 | `seal_approve_soulbound` | `entry fun seal_approve_soulbound(id: vector<u8>, policy: &PolicyConfig, gate: &Gate, nft: &SoulboundAccessNFT)` | same, via `is_valid_for_soulbound` / `uses_remaining_soulbound` |
 
 Side-effect free: immutable references only; no mutation, transfer, object creation or events.
