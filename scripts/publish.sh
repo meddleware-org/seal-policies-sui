@@ -112,7 +112,7 @@ if [ "$NETWORK" != "localnet" ]; then
     || { log "ERROR: could not read access-gate-sui Published.toml at ${AG_REV}."; exit 1; }
   ag_field() { awk -v s="[published.${NETWORK}]" -v k="$1" '$0==s{f=1;next} /^\[/{f=0} f && $0 ~ "^[[:space:]]*" k "[[:space:]]*="{gsub(/.*= *"|".*/,"");print;exit}' <<<"$AG_TOML"; }
   AG_ORIGINAL=$(ag_field original-id); AG_PUBLISHED=$(ag_field published-at)
-  [ -n "$AG_ORIGINAL" ] && [ -n "$AG_PUBLISHED" ] || { log "ERROR: access-gate-sui ${AG_REV} records no ${NETWORK} publication."; exit 1; }
+  [[ -n "$AG_ORIGINAL" && -n "$AG_PUBLISHED" ]] || { log "ERROR: access-gate-sui ${AG_REV} records no ${NETWORK} publication."; exit 1; }
   sui client object "$AG_PUBLISHED" --json >/dev/null 2>&1 || { log "ERROR: access_gate ${AG_PUBLISHED} does not exist on ${NETWORK}."; exit 1; }
   log "access_gate dependency: ${AG_PUBLISHED} (original ${AG_ORIGINAL}) at ${AG_REV:0:7}"
 fi
@@ -160,7 +160,7 @@ done
 if [ "$NETWORK" != "localnet" ]; then
   PKG_JSON=$(sui client object "$PACKAGE_ID" --json 2>/dev/null) || { log "ERROR: cannot read the published package ${PACKAGE_ID}."; exit 1; }
   LINKED=$(jq -r --arg o "$(norm_addr "$AG_ORIGINAL")" '.content.Package.linkage_table[$o].upgraded_id // empty' <<<"$PKG_JSON")
-  [ -n "$LINKED" ] && [ "$(norm_addr "$LINKED")" = "$(norm_addr "$AG_PUBLISHED")" ] \
+  [[ -n "$LINKED" && "$(norm_addr "$LINKED")" == "$(norm_addr "$AG_PUBLISHED")" ]] \
     || { log "ERROR: ${PACKAGE_ID} does not link access_gate ${AG_PUBLISHED} (linkage says '${LINKED:-<none>}'). DO NOT USE IT: burn its UpgradeCap."; exit 1; }
   jq -e '.content.Package.module_map | has("access_gate") | not' >/dev/null <<<"$PKG_JSON" \
     || { log "ERROR: ${PACKAGE_ID} bundles its own access_gate module. DO NOT USE IT: burn its UpgradeCap."; exit 1; }

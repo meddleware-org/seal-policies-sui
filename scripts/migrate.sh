@@ -30,7 +30,7 @@ preflight
 
 POLICY_CONFIG_ID="$(jq -r --arg n "$NETWORK" '.[$n].policyConfigId // empty' "$DEPLOYMENTS" 2>/dev/null || true)"
 PACKAGE_ID="$(published_field published-at)"
-[ -n "$POLICY_CONFIG_ID" ] && [ -n "$PACKAGE_ID" ] || { log "ERROR: need policyConfigId (deployments.json) and published-at (Published.toml) for $NETWORK."; exit 1; }
+[[ -n "$POLICY_CONFIG_ID" && -n "$PACKAGE_ID" ]] || { log "ERROR: need policyConfigId (deployments.json) and published-at (Published.toml) for $NETWORK."; exit 1; }
 SRC_VERSION="$(source_version)"
 CHAIN_VERSION="$(onchain_version "$POLICY_CONFIG_ID")"
 [[ "$SRC_VERSION" =~ ^[0-9]+$ && "$CHAIN_VERSION" =~ ^[0-9]+$ ]] || { log "ERROR: cannot read the source or on-chain version."; exit 1; }
