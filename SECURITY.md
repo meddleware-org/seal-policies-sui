@@ -11,7 +11,7 @@ This policy covers security issues in:
 - The discovery registry (`sources/sealed_content.move`) as it affects integrity of published
   pointers
 - The published testnet package at
-  `0x61c4aaa431cc33a41a9db34621e2925fc8eb4e3b3f1d70eaeb8d8c2b73507e42` (and the superseded `0x42cc181f851ef702c1fddc9b925553f03b71784edff49d80fbc260055f86d612`
+  `0x0c8f73490b14836e6a7a724fb46b242cb061d04a5f193fd637159997f8a1773d` (and the superseded `0x61c4aaa431cc33a41a9db34621e2925fc8eb4e3b3f1d70eaeb8d8c2b73507e42`, `0x42cc181f851ef702c1fddc9b925553f03b71784edff49d80fbc260055f86d612`
   while content sealed under it is in use)
 
 It does not cover:
@@ -73,8 +73,9 @@ Known, intentional properties (not vulnerabilities):
   `pause_blocks_decryption` policy (`E_GATE_PAUSED`) — keys already released cannot be revoked.
 - **Upgrade authority.** Each full release follows `CUSTODY.md`: the UpgradeCap moves to the custody
   multisig after publishing and the multisig burns it on a planned date after a verification window.
-  The testnet package `0x61c4aa…` (version-gated, 2026-10-02) has a live `UpgradeCap` (`0x12ee376f…5a74`,
-  publisher EOA), recorded in `deployments.json`. The superseded `0x42cc18…` is immutable
+  The testnet package `0x0c8f7349…773d` (2026-10-09) has a live `UpgradeCap` (`0x41ecc649…f574`,
+  publisher EOA), recorded in `deployments.json`. The superseded `0x61c4aa…` is immutable
+  (its cap `0x12ee376f…5a74` was burned on 2026-10-09), as is `0x42cc18…`
   (its cap `0x0ff7fa39…912f` was burned on 2026-10-02), as are the older superseded and stray
   packages (caps burned 2026-09-28).
 

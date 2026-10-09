@@ -81,13 +81,13 @@ sui move test --build-env testnet   # 37 unit tests (config + nft_gate + timeloc
 
 | Network | Original id (types, events, Seal identity namespace) | Published-at (call targets) |
 | --- | --- | --- |
-| testnet | `0x61c4aaa431cc33a41a9db34621e2925fc8eb4e3b3f1d70eaeb8d8c2b73507e42` | `0x61c4aaa431cc33a41a9db34621e2925fc8eb4e3b3f1d70eaeb8d8c2b73507e42` (2026-10-02: version gating, `PolicyConfig` `0xa5013eb407cac7e48b0b7f1cb5540b0e6115566dd01988b8f11fe77f4ebf3595`) |
+| testnet | `0x0c8f73490b14836e6a7a724fb46b242cb061d04a5f193fd637159997f8a1773d` | `0x0c8f73490b14836e6a7a724fb46b242cb061d04a5f193fd637159997f8a1773d` (2026-10-09: links the 0.0.6 `access_gate`, `PolicyConfig` `0xee0403ba15c250223527150d147f29bedfb1ec46bb2282c341be462ff0ad7d1a`) |
 | mainnet | — (pending) | — |
 
-It links `access_gate` `0xa55789…`; `Published.toml` and `deployments.json` are the source of truth. Encrypt under the
+It links `access_gate` `0xd7ddaa94…`; `Published.toml` and `deployments.json` are the source of truth. Encrypt under the
 original id and call `seal_approve` / `publish` at published-at.
 
-Superseded: `0x42cc181f851ef702c1fddc9b925553f03b71784edff49d80fbc260055f86d612` (original id; v2 published-at `0x8fcf9c…15cb`; linked `access_gate`
+Superseded: `0x61c4aaa4…7e42` (linked `access_gate` `0xa55789…`; before the 0.0.6 pass-kind rules; UpgradeCap burned) and `0x42cc181f851ef702c1fddc9b925553f03b71784edff49d80fbc260055f86d612` (original id; v2 published-at `0x8fcf9c…15cb`; linked `access_gate`
 `0x1a81ca…`; predates version gating) and `0x9f0563bf…231e` (linked the pre-policy `access_gate` `0x0bedd0…`; UpgradeCap burned).
 Strays `0x67520f80…88d3` and `0x882fcc68…e8cc` bundle their own copy of the `access_gate` module, so
 their `nft_gate` can never accept a real gate's pass; their UpgradeCaps are burned (see
@@ -101,10 +101,10 @@ used because tags are mutable (`v0.0.1` has already been moved to a different co
 
 ```toml
 [dependencies]
-access_gate = { git = "https://github.com/meddleware-org/access-gate-sui.git", rev = "b445876c8b590630d996689676d98adafc33cd04" }
+access_gate = { git = "https://github.com/meddleware-org/access-gate-sui.git", rev = "790695489fc4a7055cb31ce455c670af28f8f3c8" }
 ```
 
-That commit records the testnet publication of `access_gate` `0xa55789…` (its `Published.toml`), which
+That commit records the testnet publication of `access_gate` `0xd7ddaa94…` (its `Published.toml`), which
 the published `seal_policies` links against. Change the rev only together with the address it
 resolves to, and re-publish if that address changes; after changing it, regenerate `Move.lock`
 (`sui move build --build-env testnet`) and commit it.

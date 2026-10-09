@@ -4,7 +4,7 @@ title: Sealed Storage policies — on-chain API reference
 
 # Sealed Storage policies — on-chain API reference
 
-Package `seal_policies` (Move 2024), testnet `0x61c4aaa4…7e42`. Depends on `access_gate` `0xa55789…`
+Package `seal_policies` (Move 2024), testnet `0x0c8f7349…773d`. Depends on `access_gate` `0xd7ddaa94…`
 (git dependency pinned to a commit SHA). `config::init` shares one `PolicyConfig` and gives the
 `PolicyAdminCap` to the publisher; every entry below takes `policy: &PolicyConfig` and checks its
 version first.
