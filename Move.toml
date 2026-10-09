@@ -3,9 +3,9 @@ edition = "2024"
 name = "seal_policies"
 version = "0.0.6"
 license = "0BSD"
-# No `published-at`: the testnet publication (version-gated, linking access_gate 0xa55789d7…6d41) is
-# recorded in Published.toml (Sui >= 1.80). Superseded: 0x42cc181f…d612 (linked access_gate
-# 0x1a81ca…) and 0x9f0563bf…231e (linked 0x0bedd0…). 0x67520f80…88d3 is a broken stray that bundles
+# No `published-at`: the testnet publication (version-gated, linking access_gate 0xd7ddaa94…88c9) is
+# recorded in Published.toml (Sui >= 1.80). Superseded: 0x61c4aa… (linked access_gate 0xa55789…),
+# 0x42cc181f…d612 (linked 0x1a81ca…) and 0x9f0563bf…231e (linked 0x0bedd0…). 0x67520f80…88d3 is a broken stray that bundles
 # its own access_gate (UpgradeCap burned; audit F8).
 
 # Depends on the access-gate primitive for the `nft_gate` policy. The Sui framework is an
@@ -16,8 +16,8 @@ license = "0BSD"
 # here (Sui CLI >= 1.80 rejects a duplicate). The rev is pinned to an immutable COMMIT SHA (never a
 # mutable tag — `v0.0.1` has already been moved).
 #
-# b445876 is the access-gate commit that records the testnet publication 0xa55789… (Published.toml)
+# 7906954 is the access-gate commit that records the testnet publication 0xd7ddaa94… (Published.toml)
 # this package was published against; Move.lock pins the same commit.
 [dependencies]
-access_gate = { git = "https://github.com/meddleware-org/access-gate-sui.git", rev = "b445876c8b590630d996689676d98adafc33cd04" }
+access_gate = { git = "https://github.com/meddleware-org/access-gate-sui.git", rev = "790695489fc4a7055cb31ce455c670af28f8f3c8" }
 
