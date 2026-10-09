@@ -25,5 +25,5 @@ deps = { std = "MoveStdlib", sui = "Sui" }
 [pinned.testnet.seal_policies]
 source = { root = true }
 use_environment = "testnet"
-manifest_digest = "05CF6F930BF827903B0405E26D711B2A83E24CFF6CB1063538CD7FCFDA0E4294"
+manifest_digest = "87D4BA84E27FA6007291ED9A1F6C46851D8C2F0648BC5D04492399F3878F4F69"
 deps = { access_gate = "access_gate", std = "MoveStdlib", sui = "Sui" }
