@@ -853,7 +853,7 @@ predated two commits.
 
 ### F31 — The `upgrade.sh` / `migrate.sh` paths have never been executed on a chain
 
-**Severity:** Low   **Disposition:** RESOLVED (commit pending, 0.0.8; localnet rehearsal 2026-10-18 found and fixed F34–F36;
+**Severity:** Low   **Disposition:** RESOLVED (commit `7741acc`, 0.0.8; localnet rehearsal 2026-10-18 found and fixed F34–F36;
 offline tests `tests/scripts/ops_scripts_test.sh`, run in CI)
 
 **Where:** `scripts/upgrade.sh`, `scripts/migrate.sh`, `scripts/lib.sh`; `CUSTODY.md` "Rehearsal".
@@ -940,7 +940,7 @@ Re-add the step if a dependency is ever added.
 
 ### F34 — `upgrade.sh` and `migrate.sh` could not run on localnet
 
-**Severity:** Low   **Disposition:** RESOLVED (commit pending, 0.0.8; `tests/scripts/ops_scripts_test.sh` "published_field(localnet)",
+**Severity:** Low   **Disposition:** RESOLVED (commit `7741acc`, 0.0.8; `tests/scripts/ops_scripts_test.sh` "published_field(localnet)",
 "deployment_id(localnet)"; localnet rehearsal 2026-10-18)
 
 **Where (as found):** `scripts/lib.sh` `published_field`, `scripts/upgrade.sh`, `scripts/publish.sh` (localnet branch).
@@ -965,7 +965,7 @@ files as before (checked read-only against the real testnet records). The commit
 
 ### F35 — `migrate.sh` accepted a stale or premature record; `--verify` did not check that the package is the latest
 
-**Severity:** Low   **Disposition:** RESOLVED (commit pending, 0.0.8; tests "verify: refuses a stale published-at", "prepare: stale
+**Severity:** Low   **Disposition:** RESOLVED (commit `7741acc`, 0.0.8; tests "verify: refuses a stale published-at", "prepare: stale
 published-at", "prepare: refuses when the dry run fails", "a burned cap is a note"; localnet rehearsal 2026-10-18)
 
 **Where (as found):** `scripts/migrate.sh` (prepare and `--verify`), `scripts/lib.sh`.
@@ -990,7 +990,7 @@ the commit.
 
 ### F36 — `upgrade.sh` and `migrate.sh` lost the CLI's error output on failure
 
-**Severity:** Info   **Disposition:** RESOLVED (commit pending, 0.0.8; test "upgrade: failure shows the CLI's stdout diagnostics")
+**Severity:** Info   **Disposition:** RESOLVED (commit `7741acc`, 0.0.8; test "upgrade: failure shows the CLI's stdout diagnostics")
 
 **Where (as found):** `scripts/upgrade.sh`, `scripts/migrate.sh` (the transaction-building call).
 
@@ -1512,7 +1512,7 @@ TS requirements are n/a (no TypeScript).
   afterwards; the real keystore untouched): `publish.sh localnet`, `transfer-authority.sh` to a 1-of-2 multisig, `upgrade.sh`, a
   multisig-signed upgrade, `migrate.sh`, a multisig-signed `migrate`, `migrate.sh --verify`, and `seal_approve` against the old and new
   packages before and after `migrate` (ids and transactions in F31). The preflight and refusal paths were exercised (mainnet read-only).
-  **Found and fixed (0.0.8, commit pending):** F34 (scripts could not run on localnet), F35 (stale or premature `migrate` record,
+  **Found and fixed (0.0.8, commit `7741acc`):** F34 (scripts could not run on localnet), F35 (stale or premature `migrate` record,
   unchecked "latest"), F36 (CLI stdout diagnostics lost). **Added:** `tests/scripts/ops_scripts_test.sh` (stub `sui`, 21 checks) and a CI
   step; shellcheck (run locally from `shellcheck-py`) clean over `scripts/` and `tests/scripts/`; Move build with lints as errors and 41/41
   tests re-run green. **Dispositions:** F31 DEFERRED -> RESOLVED; F34, F35, F36 new, RESOLVED. **Counts (36 findings, 4 Positive):**
