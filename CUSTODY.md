@@ -57,13 +57,17 @@ Scripts do the checking and the unsigned transactions; the multisig signs (see t
    signatures used by key servers stay compatible, or the change ships as a fresh package).
 2. `NETWORK=<network> MULTISIG_ADDRESS=0x… bash scripts/upgrade.sh` refuses unless `VERSION` is greater than the
    version the on-chain `PolicyConfig` names and the multisig owns the UpgradeCap, then writes the unsigned
-   upgrade transaction. Sign and execute it as above, and record the new `published-at` in `Published.toml`.
+   upgrade transaction. Sign and execute it as above, and record the new `published-at` in `Published.toml`
+   (on localnet: in the git-ignored `Pub.localnet.toml`, where `upgrade.sh` uses `sui client test-upgrade`).
 3. `NETWORK=<network> MULTISIG_ADDRESS=0x… bash scripts/migrate.sh` writes the unsigned
    `config::migrate(&PolicyAdminCap, &mut PolicyConfig)` call; execute it as the multisig, right away (a slow
-   migrate extends the window in which a known-bad version keeps approving). Every older version's
+   migrate extends the window in which a known-bad version keeps approving). The script refuses unless the recorded
+   `published-at` is the package the `UpgradeCap` names and a dry run of the call succeeds, so a `migrate` aimed at
+   the old package, or sent before the upgrade executed, is caught before anything is signed. Every older version's
    `seal_approve*` and `publish` now abort with `config::E_WRONG_VERSION`.
 4. `NETWORK=<network> bash scripts/migrate.sh --verify` checks that the `PolicyConfig` names `VERSION`, that the
-   latest package has the expected modules and no bundled `access_gate`, and prints the consumer steps.
+   recorded package is the one the `UpgradeCap` names (once the cap is burned: a note), that it has the expected
+   modules and no bundled `access_gate`, and prints the consumer steps.
 5. Release the npm package and `@meddleware/seal-client` with the new `published-at`. Identities stay
    under the original id, so sealed content needs no re-sealing.
 
@@ -84,3 +88,13 @@ gate does not cover views.
 Rehearsed on localnet on 2026-10-02: `publish.sh localnet` (which also publishes `access_gate`), the
 timelock policy approved and refused on-chain against the new `PolicyConfig`, transfer of both caps to
 a 1-of-2 multisig, then a burn signed by one member and executed with `execute-signed-tx`.
+
+Upgrade and `migrate` rehearsed on localnet on 2026-10-18 (Sui 1.81.0, isolated `HOME`, throwaway keystore):
+`publish.sh localnet` (writes `Pub.localnet.toml` and `.env.localnet`), `transfer-authority.sh` of both caps to a
+1-of-2 multisig, `VERSION` 2 plus a compatible function in a scratch copy, `upgrade.sh` (signed by one member,
+executed with `execute-signed-tx`), the new `published-at` recorded in `Pub.localnet.toml`, `migrate.sh`
+(signed and executed the same way), `migrate.sh --verify`. Before `migrate` the old package still approved and the
+new one aborted `E_WRONG_VERSION`; after it the old one aborted `config::check_version` code 1 and the new one
+approved. To repeat: start `sui start --with-faucet --force-regenesis` with a scratch `HOME`, add a `localnet`
+env, fund the address from the faucet, work in a scratch copy of this directory. The offline checks of the
+scripts (a stub `sui`) are `bash tests/scripts/ops_scripts_test.sh`, run in CI.

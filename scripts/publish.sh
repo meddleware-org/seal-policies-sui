@@ -14,7 +14,8 @@
 #                        entry is backed up and removed; every ID changes).
 #
 # Localnet uses `test-publish --build-env testnet --publish-unpublished-deps` (Move.toml declares only
-# testnet/mainnet), which also publishes access_gate there.
+# testnet/mainnet), which also publishes access_gate there. Its record is the git-ignored Pub.localnet.toml
+# (PUB_FILE overrides) plus .env.localnet; upgrade.sh / migrate.sh read those on localnet (CUSTODY.md, Rehearsal).
 # On testnet/mainnet, access_gate must already be published at the commit Move.toml pins.
 #
 # Safety (preflight, before anything is signed):
@@ -134,7 +135,13 @@ if [ "$NETWORK" != "localnet" ] && grep -qx "\[published.${NETWORK}\]" "$PKG_DIR
 fi
 log "Publishing seal_policies to ${NETWORK} ..."
 if [ "$NETWORK" = "localnet" ]; then
-  PUBFILE="$(mktemp -d)/Pub.localnet.toml"   # must not exist yet: test-publish creates it
+  # The ephemeral publication record stays in the checkout (git-ignored `Pub.*.toml`) so that upgrade.sh and
+  # migrate.sh can rehearse against it. It must not exist yet (test-publish creates it): a previous one is kept.
+  PUBFILE="${PUB_FILE:-$PKG_DIR/Pub.localnet.toml}"
+  if [ -e "$PUBFILE" ]; then
+    mv "$PUBFILE" "${PUBFILE}.$(date -u +%Y%m%dT%H%M%SZ).bak"
+    log "Kept the previous localnet publication record as ${PUBFILE}.*.bak"
+  fi
   OUT=$(sui client test-publish "$PKG_DIR" --json --build-env testnet --pubfile-path "$PUBFILE" \
     --publish-unpublished-deps --gas-budget "$GAS_BUDGET" 2>&1) || { log "ERROR: test-publish failed"; log "$OUT"; exit 1; }
 else

@@ -12,7 +12,24 @@ DEPLOYMENTS="$REPO_ROOT/deployments.json"
 
 long_addr() { local h="${1#0x}"; printf '0x%064s' "${h,,}" | tr ' ' 0; }
 
+# Localnet is an ephemeral network: `publish.sh localnet` uses `test-publish`, which records the publication
+# in the git-ignored Pub.localnet.toml (override: PUB_FILE) and the ids in the git-ignored .env.localnet,
+# never in the committed Published.toml / deployments.json. testnet/mainnet keep using those two files.
+PUB_FILE="${PUB_FILE:-$REPO_ROOT/Pub.localnet.toml}"
+
 published_field() {
+  if [ "${NETWORK:-}" = "localnet" ]; then
+    # [[published]] entries; ours is the one whose `source = { local = "<this checkout>" }`.
+    awk -v root="$REPO_ROOT" -v key="$1" '
+      /^\[\[published\]\]/ { mine = 0; next }
+      /^\[/                { mine = 0 }
+      $0 ~ "^[[:space:]]*source[[:space:]]*=" { mine = (index($0, "local = \"" root "\"") > 0); next }
+      mine && $0 ~ "^[[:space:]]*" key "[[:space:]]*=" {
+        gsub(/.*=[[:space:]]*"/, ""); gsub(/".*/, ""); print; exit
+      }
+    ' "$PUB_FILE" 2>/dev/null || true
+    return 0
+  fi
   awk -v section="[published.${NETWORK}]" -v key="$1" '
     $0 == section { in_section = 1; next }
     /^\[/         { in_section = 0 }
@@ -22,12 +39,46 @@ published_field() {
   ' "$PUBLISHED_TOML" 2>/dev/null || true
 }
 
+# A deployment id: deployments.json (committed record) for testnet/mainnet; on localnet the git-ignored
+# .env.localnet written by publish.sh. $1 = deployments.json key, $2 = .env variable.
+deployment_id() {
+  if [ "${NETWORK:-}" = "localnet" ]; then
+    if [ -f "$REPO_ROOT/.env.localnet" ]; then sed -n "s/^$2=//p" "$REPO_ROOT/.env.localnet" | head -1; fi
+    return 0
+  fi
+  jq -r --arg n "$NETWORK" --arg k "$1" '.[$n][$k] // empty' "$DEPLOYMENTS" 2>/dev/null || true
+}
+
 # The VERSION constant compiled into this checkout (sources/config.move).
 source_version() { sed -n 's/^const VERSION: u64 = \([0-9][0-9]*\);.*/\1/p' "$REPO_ROOT/sources/config.move" | head -1; }
 
 # The version the shared PolicyConfig names on-chain.
 onchain_version() {
   sui client object "$1" --json 2>/dev/null | jq -r '.content.fields.version // .content.version // empty'
+}
+
+# The package the UpgradeCap currently names, i.e. the latest published version (empty if the cap is gone).
+latest_package_id() {
+  # `sui client object` exits non-zero for a deleted (burned) object: that is "empty", not a failure.
+  { sui client object "$1" --json 2>/dev/null || true; } | jq -r '.content.package // empty'
+}
+
+# Refuse unless $1 (the recorded published-at) is the latest version: a stale record would aim `migrate` at
+# the old package, or let `--verify` bless it. The cap is gone after make-immutable: then only a note.
+require_latest_package() {
+  local cap latest
+  cap="$(published_field upgrade-capability)"
+  latest=""
+  if [ -n "$cap" ]; then latest="$(latest_package_id "$cap")"; fi
+  if [ -z "$latest" ]; then
+    log "NOTE: the UpgradeCap '${cap:-<none recorded>}' was not found (burned?): cannot confirm $1 is the latest version."
+    return 0
+  fi
+  [ "$(long_addr "$latest")" = "$(long_addr "$1")" ] || {
+    log "ERROR: the recorded published-at $1 is not the latest version: the UpgradeCap names $latest."
+    log "       Record the upgraded published-at first (CUSTODY.md, 'Upgrading during the verification window', step 2)."
+    exit 1
+  }
 }
 
 preflight() {

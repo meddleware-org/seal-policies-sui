@@ -12,6 +12,7 @@ client.yaml
 .env.testnet
 .env.mainnet
 Pub.*.toml
+Pub.*.toml.*.bak
 
 # macOS
 .DS_Store

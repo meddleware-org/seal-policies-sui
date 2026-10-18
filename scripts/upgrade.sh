@@ -24,10 +24,10 @@ MULTISIG_ADDRESS="${MULTISIG_ADDRESS:-}"
 [[ "$MULTISIG_ADDRESS" =~ ^0x[0-9a-fA-F]{64}$ ]] || { log "ERROR: MULTISIG_ADDRESS must be set to a 0x-prefixed 64-hex address."; exit 1; }
 preflight
 
-POLICY_CONFIG_ID="$(jq -r --arg n "$NETWORK" '.[$n].policyConfigId // empty' "$DEPLOYMENTS" 2>/dev/null || true)"
-[ -n "$POLICY_CONFIG_ID" ] || { log "ERROR: no policyConfigId for $NETWORK in deployments.json."; exit 1; }
+POLICY_CONFIG_ID="$(deployment_id policyConfigId SEAL_POLICIES_POLICY_CONFIG_ID)"
+[ -n "$POLICY_CONFIG_ID" ] || { log "ERROR: no policyConfigId for $NETWORK in deployments.json (localnet: .env.localnet)."; exit 1; }
 UPGRADE_CAP_ID="$(published_field upgrade-capability)"
-[ -n "$UPGRADE_CAP_ID" ] || { log "ERROR: no upgrade-capability for $NETWORK in Published.toml."; exit 1; }
+[ -n "$UPGRADE_CAP_ID" ] || { log "ERROR: no upgrade-capability for $NETWORK in Published.toml (localnet: $PUB_FILE)."; exit 1; }
 
 SRC_VERSION="$(source_version)"
 CHAIN_VERSION="$(onchain_version "$POLICY_CONFIG_ID")"
@@ -46,11 +46,20 @@ CAP_OWNER="$(jq -r '.owner.AddressOwner // empty' <<<"$CAP_JSON")"
 
 OUT_FILE="$REPO_ROOT/upgrade.${NETWORK}.tx.b64"
 log "Building the unsigned upgrade (sender = the multisig; VERSION $CHAIN_VERSION -> $SRC_VERSION) ..."
-( cd "$REPO_ROOT" && sui client upgrade --upgrade-capability "$UPGRADE_CAP_ID" --sender "$MULTISIG_ADDRESS" \
+# `sui client upgrade` needs the network in Move.toml (testnet/mainnet); localnet is ephemeral and uses
+# `test-upgrade` against the Pub.localnet.toml that `publish.sh localnet` wrote.
+if [ "$NETWORK" = "localnet" ]; then
+  [ -f "$PUB_FILE" ] || { log "ERROR: $PUB_FILE not found (written by scripts/publish.sh localnet)."; exit 1; }
+  UPGRADE_CMD=(sui client test-upgrade --build-env testnet --pubfile-path "$PUB_FILE")
+else
+  UPGRADE_CMD=(sui client upgrade)
+fi
+# The CLI prints its diagnostics on stdout (not stderr): keep both and show both on failure.
+( cd "$REPO_ROOT" && "${UPGRADE_CMD[@]}" --upgrade-capability "$UPGRADE_CAP_ID" --sender "$MULTISIG_ADDRESS" \
     --gas-budget "$GAS_BUDGET" --serialize-unsigned-transaction ) > "$OUT_FILE.raw" 2> "$OUT_FILE.log" \
-  || { log "ERROR: building the upgrade failed:"; cat "$OUT_FILE.log" >&2; rm -f "$OUT_FILE.raw"; exit 1; }
+  || { log "ERROR: building the upgrade failed:"; cat "$OUT_FILE.raw" "$OUT_FILE.log" >&2; rm -f "$OUT_FILE.raw"; exit 1; }
 tail -n 1 "$OUT_FILE.raw" > "$OUT_FILE" && rm -f "$OUT_FILE.raw"
-[ -s "$OUT_FILE" ] || { log "ERROR: no transaction bytes were produced."; exit 1; }
+[[ "$(cat "$OUT_FILE")" =~ ^[A-Za-z0-9+/]+=*$ ]] || { log "ERROR: the CLI did not end with transaction bytes:"; cat "$OUT_FILE" "$OUT_FILE.log" >&2; rm -f "$OUT_FILE"; exit 1; }
 
 log "Wrote $OUT_FILE"
 log ""
@@ -58,4 +67,5 @@ log "Next (CUSTODY.md, 'Signing a transaction as the multisig'):"
 log "  1. each signer: sui keytool sign --address <signer> --data \"\$(cat $OUT_FILE)\" --json"
 log "  2. combine:     sui keytool multi-sig-combine-partial-sig --pks … --weights … --threshold … --sigs … --json"
 log "  3. execute:     sui client execute-signed-tx --tx-bytes \"\$(cat $OUT_FILE)\" --signatures <multisigSerialized>"
-log "  4. record the new published-at in Published.toml, then: NETWORK=$NETWORK MULTISIG_ADDRESS=$MULTISIG_ADDRESS bash scripts/migrate.sh"
+if [ "$NETWORK" = "localnet" ]; then RECORD_FILE="${PUB_FILE##*/}"; else RECORD_FILE="Published.toml"; fi
+log "  4. record the new published-at in $RECORD_FILE, then: NETWORK=$NETWORK MULTISIG_ADDRESS=$MULTISIG_ADDRESS bash scripts/migrate.sh"

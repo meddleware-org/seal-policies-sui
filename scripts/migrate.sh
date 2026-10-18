@@ -28,9 +28,10 @@ for arg in "$@"; do
 done
 preflight
 
-POLICY_CONFIG_ID="$(jq -r --arg n "$NETWORK" '.[$n].policyConfigId // empty' "$DEPLOYMENTS" 2>/dev/null || true)"
+POLICY_CONFIG_ID="$(deployment_id policyConfigId SEAL_POLICIES_POLICY_CONFIG_ID)"
 PACKAGE_ID="$(published_field published-at)"
 [[ -n "$POLICY_CONFIG_ID" && -n "$PACKAGE_ID" ]] || { log "ERROR: need policyConfigId (deployments.json) and published-at (Published.toml) for $NETWORK."; exit 1; }
+require_latest_package "$PACKAGE_ID"
 SRC_VERSION="$(source_version)"
 CHAIN_VERSION="$(onchain_version "$POLICY_CONFIG_ID")"
 [[ "$SRC_VERSION" =~ ^[0-9]+$ && "$CHAIN_VERSION" =~ ^[0-9]+$ ]] || { log "ERROR: cannot read the source or on-chain version."; exit 1; }
@@ -53,7 +54,7 @@ fi
 
 MULTISIG_ADDRESS="${MULTISIG_ADDRESS:-}"
 [[ "$MULTISIG_ADDRESS" =~ ^0x[0-9a-fA-F]{64}$ ]] || { log "ERROR: MULTISIG_ADDRESS must be set to a 0x-prefixed 64-hex address."; exit 1; }
-POLICY_ADMIN_CAP_ID="$(jq -r --arg n "$NETWORK" '.[$n].policyAdminCapId // empty' "$DEPLOYMENTS" 2>/dev/null || true)"
+POLICY_ADMIN_CAP_ID="$(deployment_id policyAdminCapId SEAL_POLICIES_POLICY_ADMIN_CAP_ID)"
 POLICY_ADMIN_CAP_ID="${POLICY_ADMIN_CAP_ID:-${POLICY_ADMIN_CAP_ID_OVERRIDE:-}}"
 [ -n "$POLICY_ADMIN_CAP_ID" ] || { log "ERROR: no policyAdminCapId for $NETWORK in deployments.json."; exit 1; }
 [ "$SRC_VERSION" -gt "$CHAIN_VERSION" ] || { log "ERROR: nothing to migrate: PolicyConfig is at $CHAIN_VERSION, VERSION is $SRC_VERSION."; exit 1; }
@@ -61,11 +62,22 @@ OWNER="$(sui client object "$POLICY_ADMIN_CAP_ID" --json 2>/dev/null | jq -r '.o
 [ "$(long_addr "$OWNER")" = "$(long_addr "$MULTISIG_ADDRESS")" ] \
   || { log "ERROR: PolicyAdminCap $POLICY_ADMIN_CAP_ID is owned by '${OWNER:-<unknown>}', not MULTISIG_ADDRESS."; exit 1; }
 
+MIGRATE_CALL=(--move-call "${PACKAGE_ID}::config::migrate" "@${POLICY_ADMIN_CAP_ID}" "@${POLICY_CONFIG_ID}"
+              --sender "@${MULTISIG_ADDRESS}" --gas-budget "$GAS_BUDGET")
+# Dry-run the exact call first: `migrate` aborts (config::E_NOT_UPGRADE) unless the recorded package is the
+# upgraded one and its VERSION is above the PolicyConfig's, i.e. the upgrade has executed.
+DRY_OUT="$(sui client ptb "${MIGRATE_CALL[@]}" --dry-run 2>&1)" || true
+if ! grep -q 'execution status: success' <<<"$DRY_OUT"; then
+  log "ERROR: the migrate call would fail on-chain (dry run):"
+  grep -m1 'execution status' <<<"$DRY_OUT" >&2 || printf '%s\n' "$DRY_OUT" >&2
+  log "       Has the upgrade executed, and is the upgraded package the recorded published-at ($PACKAGE_ID)?"
+  exit 1
+fi
+
 OUT_FILE="$REPO_ROOT/migrate.${NETWORK}.tx.b64"
-sui client ptb --move-call "${PACKAGE_ID}::config::migrate" "@${POLICY_ADMIN_CAP_ID}" "@${POLICY_CONFIG_ID}" \
-  --sender "@${MULTISIG_ADDRESS}" --gas-budget "$GAS_BUDGET" --serialize-unsigned-transaction > "$OUT_FILE.raw" 2> "$OUT_FILE.log" \
-  || { log "ERROR: building migrate failed:"; cat "$OUT_FILE.log" >&2; rm -f "$OUT_FILE.raw"; exit 1; }
+sui client ptb "${MIGRATE_CALL[@]}" --serialize-unsigned-transaction > "$OUT_FILE.raw" 2> "$OUT_FILE.log" \
+  || { log "ERROR: building migrate failed:"; cat "$OUT_FILE.raw" "$OUT_FILE.log" >&2; rm -f "$OUT_FILE.raw"; exit 1; }
 tail -n 1 "$OUT_FILE.raw" > "$OUT_FILE" && rm -f "$OUT_FILE.raw"
-[ -s "$OUT_FILE" ] || { log "ERROR: no transaction bytes were produced."; exit 1; }
+[[ "$(cat "$OUT_FILE")" =~ ^[A-Za-z0-9+/]+=*$ ]] || { log "ERROR: the CLI did not end with transaction bytes:"; cat "$OUT_FILE" "$OUT_FILE.log" >&2; rm -f "$OUT_FILE"; exit 1; }
 log "Wrote $OUT_FILE (migrate $CHAIN_VERSION -> $SRC_VERSION). Sign and execute it as the multisig (CUSTODY.md),"
 log "then run: NETWORK=$NETWORK bash scripts/migrate.sh --verify"
