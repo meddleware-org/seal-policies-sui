@@ -52,9 +52,10 @@
 - Custody: both caps are with the deploy key. The multisig transfer and the planned burn are the
   pre-mainnet `CUSTODY.md` process (`OPERATOR_TASKS.md` "Mainnet release custody"; OQ3).
 - npm `@meddleware/seal-policies-sui` **0.0.7** (published 2026-10-09T12:45Z) has an SLSA v1 provenance
-  attestation. Tag `v0.0.7` = `a03a532` = HEAD, so nothing is unreleased (F24). 18 files.
-- Consumers: `@meddleware/seal-client` 0.0.19 (exact devDependency `0.0.7`, `src/deployments.ts` generated
-  from it); the docs and dev sites (`^0.0.7`).
+  attestation. Tag `v0.0.7` = `a03a532` = the last code commit (the commits after it only touch this audit), so
+  nothing is unreleased (F24). 18 files. Still `latest` on 2026-10-18 (no newer release).
+- Consumers (re-read 2026-10-18): `@meddleware/seal-client` 0.0.20 (released 2026-10-18; exact devDependency `0.0.7`,
+  `src/deployments.ts` generated from it; 0.0.19 on 2026-10-09); the docs and dev sites (`^0.0.7`).
 
 **Review date:**
 
@@ -62,7 +63,8 @@
 - 2026-09-28 — relocated.
 - 2026-09-29, 2026-09-30 — updates.
 - 2026-10-03 — re-verified.
-- **2026-10-09 — re-verified.**
+- 2026-10-09 — re-verified.
+- **2026-10-18 — release status checked.**
 
 **Reviewer:** Internal review (Move contract reviewer)
 **Severity ceiling:** Medium.
@@ -1407,6 +1409,11 @@ TS requirements are n/a (no TypeScript).
   - **Not run here:** shellcheck (not installed; CI covers it), live key-server decrypt and the
     frozen-pass probe, and a localnet run of `upgrade.sh` / `migrate.sh` (F31). Seal documentation was
     not re-fetched.
+- 2026-10-18 — release status checked: no new release (`@meddleware/seal-policies-sui` 0.0.7 is still `latest`, SLSA v1 provenance
+  present; tag `v0.0.7` = `a03a532`; no code change on `main` since). Consumers re-read: seal-client 0.0.20 (released
+  2026-10-18) still pins `0.0.7` exactly and its `check:deployments` matched in its 2026-10-18 pass; docs and dev at `^0.0.7`.
+  The coupling facts quoted from seal-client 0.0.19 above are unchanged in 0.0.20 (access-gate-client `^0.0.9`, `engines`, tests only).
+  No finding or Section D box changes.
 
 ## Pre-save consistency checklist (this pass)
 
