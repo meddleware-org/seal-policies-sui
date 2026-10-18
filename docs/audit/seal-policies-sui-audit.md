@@ -28,7 +28,8 @@
 - Not triggered: VUE, WALRUS, AUTH, PROXY, IMG, GO, RUST, WORKERS, SITE, PLATFORM. No lens registered
   for MCP or DB applies.
 
-**Package:** `seal_policies` v0.0.7; edition 2024.
+**Package:** `seal_policies` v0.0.8 (0.0.7 is the released and published version; 0.0.8 changes only the ops
+scripts, their tests and `CUSTODY.md`, F31, F34–F36); edition 2024.
 
 - Framework rev `83f11dc85d5695a57894329b005b78d75f9bb059` (`Move.lock`, testnet).
 - `access_gate` is a git dependency pinned to commit `790695489fc4a7055cb31ce455c670af28f8f3c8`
@@ -52,8 +53,9 @@
 - Custody: both caps are with the deploy key. The multisig transfer and the planned burn are the
   pre-mainnet `CUSTODY.md` process (`OPERATOR_TASKS.md` "Mainnet release custody"; OQ3).
 - npm `@meddleware/seal-policies-sui` **0.0.7** (published 2026-10-09T12:45Z) has an SLSA v1 provenance
-  attestation. Tag `v0.0.7` = `a03a532` = the last code commit (the commits after it only touch this audit), so
-  nothing is unreleased (F24). 18 files. Still `latest` on 2026-10-18 (no newer release).
+  attestation. Tag `v0.0.7` = `a03a532` (F24). 18 files. Still `latest` on 2026-10-18. Since then one commit changes
+  shipped content (`CUSTODY.md`, version bump to 0.0.8; the scripts themselves are not in `files`): it is unreleased
+  until the orchestrator tags it.
 - Consumers (re-read 2026-10-18): `@meddleware/seal-client` 0.0.20 (released 2026-10-18; exact devDependency `0.0.7`,
   `src/deployments.ts` generated from it; 0.0.19 on 2026-10-09); the docs and dev sites (`^0.0.7`).
 
@@ -133,7 +135,7 @@ is not yet configured (`deployments.json` `multisigAddress: null`). No key is st
 - a **discovery registry** that is not a policy: `sealed_content`;
 - a **version gate**: `config`.
 
-**Positive properties verified at HEAD `a03a532` (tag `v0.0.7`) on sui 1.81.0:**
+**Positive properties verified at HEAD `a03a532` (tag `v0.0.7`) on sui 1.81.0 (the Move sources are unchanged since):**
 
 - **Side-effect freedom.** Every `seal_approve*` is a non-public `entry` taking only immutable
   references. It creates, mutates, transfers and emits nothing.
@@ -161,8 +163,8 @@ and released:
   `access_gate` `0xd7ddaa94…` (which forbids the pause-blocks-decryption plus freeze combination and
   fixes the pass kind), release 0.0.7. The old `0x61c4aa…` is immutable.
 
-**Findings by disposition (33 findings, 4 of them Positive):** RESOLVED 19, ADJUDICATED 5, MITIGATED 2,
-ACCEPTED-RISK 2, DEFERRED 1.
+**Findings by disposition (36 findings, 4 of them Positive):** RESOLVED 23, ADJUDICATED 5, MITIGATED 2,
+ACCEPTED-RISK 2, DEFERRED 0.
 
 **Findings not fully closed, in order of importance:**
 
@@ -177,23 +179,22 @@ ACCEPTED-RISK 2, DEFERRED 1.
      `a_frozen_transferable_pass_still_approves_for_anyone` pins it.
    - What remains: the protection is client-side. Content sealed by another client to a transferable
      gate is exposed to this property, and the live key-server confirmation is still outstanding (C.2).
-2. **F31 (Low, DEFERRED)** — the new `upgrade.sh` / `migrate.sh` paths have never been executed on a
-   chain; they are rehearsed before the first real upgrade (pre-mainnet gate).
-3. **F23 (Info, MITIGATED)** — two or three documentation nits remain.
-4. **F32, F33 (Info, ACCEPTED-RISK)** — `make-immutable.sh` has no `EXPECTED_SIGNER` check; the publish
+2. **F23 (Info, MITIGATED)** — two or three documentation nits remain.
+3. **F32, F33 (Info, ACCEPTED-RISK)** — `make-immutable.sh` has no `EXPECTED_SIGNER` check; the publish
    workflow no longer runs `npm audit` (no dependencies).
 
 **Posture.**
 
 - The contract logic is minimal and well tested.
-- Version gating is correctly built, and the upgrade path is now scripted with its checks.
+- Version gating is correctly built, and the upgrade path is scripted with its checks and was rehearsed end to end on
+  localnet (F31, 2026-10-18; the rehearsal found and fixed F34–F36).
 - The custody tooling is disciplined and the publish script verifies linkage.
 
 The remaining work is maintainer or mainnet work:
 
 - executing the decided custody lifecycle (OQ3, `OPERATOR_TASKS.md` "Mainnet release custody");
 - live key-server tests (non-owner rejection, frozen-pass outcome, wrong-version refusal after
-  `migrate`) and the localnet rehearsal of upgrade plus `migrate` (F31);
+  `migrate`; the on-chain half was rehearsed on localnet 2026-10-18, F31);
 - mainnet committee terms (`OPERATOR_TASKS.md` "Mainnet Seal key servers") and the external review.
 
 ---
@@ -574,7 +575,7 @@ succeeds on a frozen pass (passes at HEAD).
 
 ### F17 — Upgrade and `migrate` have no OPS tooling or `VERSION`-bump check; `transfer-authority.sh` mis-resolves the package after an upgrade
 
-**Severity:** Low   **Disposition:** RESOLVED (`652e7b6`; the scripts' first real execution is F31)
+**Severity:** Low   **Disposition:** RESOLVED (`652e7b6`; first executed on a chain 2026-10-18, F31)
 
 **Where (as found 2026-10-03):**
 
@@ -835,7 +836,7 @@ predated two commits.
   - backs up `.env`;
   - `jq`-parsed IDs with exactly-one-match checks by exact type.
 - **Multisig path:** writes unsigned transactions; rehearsed on localnet 2026-10-02 (publish, transfer,
-  burn; not upgrade or `migrate`, F31).
+  burn) and 2026-10-18 (upgrade, `migrate`, `--verify`, F31).
 - **Hygiene:** shellcheck in CI; git-ignored keystores, env files and unsigned-transaction outputs.
 
 ### F30 — Positive: release chain
@@ -852,12 +853,12 @@ predated two commits.
 
 ### F31 — The `upgrade.sh` / `migrate.sh` paths have never been executed on a chain
 
-**Severity:** Low   **Disposition:** DEFERRED (pre-mainnet gate: "upgrade/`migrate` rehearsal on localnet",
-Section D; run before the first real upgrade or burn)
+**Severity:** Low   **Disposition:** RESOLVED (commit pending, 0.0.8; localnet rehearsal 2026-10-18 found and fixed F34–F36;
+offline tests `tests/scripts/ops_scripts_test.sh`, run in CI)
 
 **Where:** `scripts/upgrade.sh`, `scripts/migrate.sh`, `scripts/lib.sh`; `CUSTODY.md` "Rehearsal".
 
-**Issue:**
+**Issue (as found 2026-10-09):**
 
 - The `CUSTODY.md` rehearsal (2026-10-02) covers publish, transfer to a 1-of-2 multisig and the
   multisig burn. It pre-dates `upgrade.sh` and `migrate.sh`.
@@ -871,12 +872,40 @@ Section D; run before the first real upgrade or burn)
 **Impact:** a defect would surface at the moment an upgrade is urgent. The scripts fail closed (they
 write nothing the multisig has not signed), so the cost is delay.
 
-**Remediation / evidence:**
+**Remediation / evidence (2026-10-18, 0.0.8):**
 
-- Rehearse on localnet before the first real use: publish, bump `VERSION` in a scratch copy,
-  `upgrade.sh`, sign with the 1-of-2 multisig, `migrate.sh`, execute, `migrate.sh --verify`, and a
-  wrong-version approve against the old package.
-- Tracked with the custody execution in `OPERATOR_TASKS.md` "Mainnet release custody".
+- **Rehearsal on a throwaway localnet** (`sui start --with-faucet --force-regenesis`, Sui 1.81.0, isolated `HOME`
+  and keystore, both deleted afterwards; the real keystore's mtime was checked unchanged). The repo was copied to a
+  scratch directory and only that copy was changed (`VERSION` 2 and a compatible `public fun`). On that localnet:
+  - `scripts/publish.sh localnet` published `access_gate` and `seal_policies` v1
+    (`0x5075cec1…8210a0c`; `PolicyConfig` `0xb47ed2ee…ad7395c67`; `PolicyAdminCap` `0x3fdc93d9…d476f81f`;
+    `UpgradeCap` `0xc1f3372e…adc81863`; policy 0 = compatible, version 1);
+  - a 1-of-2 multisig `0x779f155c…d242bd` (`multisig-address.sh`), funded; `transfer-authority.sh
+    --include-upgrade-cap` (typed `YES`) moved both caps (owner re-read);
+  - `upgrade.sh` wrote the unsigned upgrade; one member signed, `multi-sig-combine-partial-sig`,
+    `execute-signed-tx` succeeded (tx `7cyTUT1C…`): new package `0x0754858d…e39d0fcb`, the `UpgradeCap` at version 2, policy
+    still 0, and the `PolicyConfig` still at 1. In that window the v1 package still approved and the v2 package aborted
+    `config::check_version` code 1 (`E_WRONG_VERSION`), as designed;
+  - the new `published-at` recorded; `migrate.sh` wrote the unsigned call, signed and executed the same way (tx
+    `2SweZSMy…`), emitting `PolicyConfigMigratedEvent {from_version: 1, to_version: 2}`;
+  - `migrate.sh --verify` reported `PolicyConfig … is at version 2 = VERSION; package 0x0754858d… is the latest`;
+    after `migrate` the v1 package's `timelock::seal_approve` aborted code 1 in `config::check_version` and the v2
+    package's succeeded;
+  - refusals observed: no or malformed `MULTISIG_ADDRESS`; active env not `NETWORK`; mainnet without `MAINNET_CONFIRM`
+    (exit 78, read-only chain-identifier check against mainnet); `VERSION` not above the on-chain version; `UpgradeCap`
+    not owned by the multisig; `migrate` with nothing to migrate; `--verify` before `migrate`; unknown argument.
+    The `jq` paths (`.content.version`, `.content.package`, `.content.Package.module_map`, `.owner.AddressOwner`)
+    resolve against the real 1.81.0 output. `migrate.sh --verify` was also run read-only against the real testnet
+    package (`PolicyConfig` at 1 = `VERSION`, `0x0c8f7349…` is the latest): the testnet paths still work.
+- **Defects the rehearsal found, fixed in 0.0.8:** F34 (the scripts could not run on localnet), F35 (a stale or
+  premature `migrate` was prepared, and `--verify` claimed "latest" unchecked), F36 (CLI diagnostics were lost on failure).
+- **Automated tests:** `tests/scripts/ops_scripts_test.sh` drives `lib.sh`, `upgrade.sh` and `migrate.sh` against a stub
+  `sui` (21 checks: record lookup, `--verify` pass and three refusals, prepare pass and refusals, `upgrade.sh`
+  refusals and failure output); CI runs it and shellcheck over `scripts/` and `tests/scripts/`. A mutation (the burned-cap
+  `pipefail` exit) was caught by it during development.
+- Not covered here and still a pre-mainnet item: live key servers refusing the old version after `migrate`
+  (Section D, maintainer e2e), and the first multisig-signed upgrade on testnet or mainnet, which is custody execution
+  (`OPERATOR_TASKS.md` "Mainnet release custody"). `make-immutable.sh` was not re-run (2026-10-02 rehearsal stands).
 
 ### F32 — `make-immutable.sh` has no `EXPECTED_SIGNER` check; `lib.sh` `expect_signer` is unused
 
@@ -909,6 +938,70 @@ own keys. Removing the dead helper or calling it is a hygiene change for the nex
 bytes, so there is nothing to audit; `npm ci` still runs in the publish job, and Dependabot covers npm.
 Re-add the step if a dependency is ever added.
 
+### F34 — `upgrade.sh` and `migrate.sh` could not run on localnet
+
+**Severity:** Low   **Disposition:** RESOLVED (commit pending, 0.0.8; `tests/scripts/ops_scripts_test.sh` "published_field(localnet)",
+"deployment_id(localnet)"; localnet rehearsal 2026-10-18)
+
+**Where (as found):** `scripts/lib.sh` `published_field`, `scripts/upgrade.sh`, `scripts/publish.sh` (localnet branch).
+
+**Issue (as found 2026-10-18):**
+
+- `publish.sh localnet` uses `test-publish`, whose record is an ephemeral pubfile that the script created in a
+  throwaway `mktemp` directory; nothing was written to `Published.toml` or `deployments.json` (rightly: they are
+  committed). `upgrade.sh` and `migrate.sh` read exactly those two files, so on localnet they stopped at "no
+  policyConfigId" even right after a publish.
+- `sui client upgrade` refuses an environment that `Move.toml` does not declare ("the package does not define an
+  `localnet` environment"); localnet needs `sui client test-upgrade --build-env testnet --pubfile-path …`.
+
+**Impact:** the documented pre-mainnet rehearsal (Section D) could not be run with the scripts as released; the gate was
+unreachable without hand-edited records.
+
+**Remediation / evidence (0.0.8):** `publish.sh localnet` keeps the pubfile in the checkout as the git-ignored
+`Pub.localnet.toml` (an existing one is kept as `.bak`; `PUB_FILE` overrides); `lib.sh` reads the localnet package, original id
+and `UpgradeCap` from the `[[published]]` entry whose `source` is this checkout, and the `PolicyConfig` / `PolicyAdminCap` ids
+from `.env.localnet`; `upgrade.sh` uses `test-upgrade` on localnet and `upgrade` elsewhere. testnet and mainnet read the same
+files as before (checked read-only against the real testnet records). The committed files are never written on localnet.
+
+### F35 — `migrate.sh` accepted a stale or premature record; `--verify` did not check that the package is the latest
+
+**Severity:** Low   **Disposition:** RESOLVED (commit pending, 0.0.8; tests "verify: refuses a stale published-at", "prepare: stale
+published-at", "prepare: refuses when the dry run fails", "a burned cap is a note"; localnet rehearsal 2026-10-18)
+
+**Where (as found):** `scripts/migrate.sh` (prepare and `--verify`), `scripts/lib.sh`.
+
+**Issue (as found 2026-10-18, in the rehearsal):**
+
+- With the source at `VERSION` 2 and the chain at 1, `migrate.sh` wrote an unsigned `migrate` call against the **old**
+  package (the recorded `published-at`, because the upgrade had not executed or its `published-at` was not recorded yet).
+  Executed, it would abort `E_NOT_UPGRADE` (a wasted signing round while the faulty version keeps approving).
+- `--verify` printed "package … is the latest" without checking that against anything; a stale `published-at` was
+  blessed whenever the `PolicyConfig` happened to name `VERSION`.
+
+**Impact:** delay, and a false assurance in the window the custody process most needs to be fast and correct. No loss of
+funds or authority (the on-chain call aborts).
+
+**Remediation / evidence (0.0.8):** both modes call `require_latest_package`: the recorded `published-at` must equal the package the
+`UpgradeCap` names (`.content.package`); once the cap is burned the check is a note. Prepare also dry-runs the exact `migrate`
+call and refuses unless it succeeds, so a premature or mis-aimed call is caught before anything is signed. In the rehearsal the
+premature call was refused (`MoveAbort … config … 2`), the stale record was refused ("the UpgradeCap names 0x0754858d…"), and the
+correct flow passed. A first draft of the burned-cap path exited silently under `set -e`/`pipefail`; the new test caught it before
+the commit.
+
+### F36 — `upgrade.sh` and `migrate.sh` lost the CLI's error output on failure
+
+**Severity:** Info   **Disposition:** RESOLVED (commit pending, 0.0.8; test "upgrade: failure shows the CLI's stdout diagnostics")
+
+**Where (as found):** `scripts/upgrade.sh`, `scripts/migrate.sh` (the transaction-building call).
+
+**Issue (as found 2026-10-18):** the scripts sent stdout to a temporary file and stderr to a log, and on failure printed only the
+log. `sui client upgrade` and `sui client ptb` write their diagnostics to **stdout**, so a failed build printed
+"ERROR: building the upgrade failed:" followed by nothing. The last output line was also taken as the transaction bytes without
+checking it.
+
+**Remediation / evidence (0.0.8):** on failure both files are printed; the last line must be base64 or the script refuses and shows
+the output. Both are pinned by the stub tests.
+
 ---
 
 ## Section A — Invariant verification matrix
@@ -928,12 +1021,12 @@ Re-add the step if a dependency is ever added.
 | I10 | **Abort codes:** unique within each module; map published | `E_*` constants | every code has an `expected_failure` test with its location; `docs/onchain/api-reference.md` | HOLDS |
 | I11 | Policy semantics fixed for existing ciphertexts | `UpgradeCap` burned | testnet cap live (custody lifecycle, OQ3) | GAP (pre-mainnet, maintainer; process decided) |
 | I12 | **Arithmetic** | timelock shift over 8 bytes only | `unlock_ms_max_with_max_clock_succeeds` | HOLDS |
-| I13 | **Version gating:** every entry aborts unless `PolicyConfig.version == VERSION`; `migrate` cap-gated and forward-only; no forgeable config | `config.move`, first line of each entry | four wrong-version tests; three `migrate` tests; `upgrade.sh` requires `VERSION` > on-chain | HOLDS (scripts not yet run on a chain, F31) |
+| I13 | **Version gating:** every entry aborts unless `PolicyConfig.version == VERSION`; `migrate` cap-gated and forward-only; no forgeable config | `config.move`, first line of each entry | four wrong-version tests; three `migrate` tests; `upgrade.sh` requires `VERSION` > on-chain; localnet rehearsal 2026-10-18: old package aborts `E_WRONG_VERSION` after `migrate`, new one approves (F31) | HOLDS |
 | I14 | **Only the pass owner can authorise** (Seal input ownership) | Seal dry-run ownership resolution | `a_frozen_transferable_pass_still_approves_for_anyone` records the exception | HOLDS for soulbound passes; transferable passes MITIGATED (F16: client refusal, documented) |
 | I15 | **Encryption binding:** encrypt under the original id; approve at the latest published-at; `PolicyConfig` passed | seal-client `deployments.ts` (generated from this package) | seal-client provider tests; `deployments` drift check; ABI-drift integration test | HOLDS (consumer-side) |
 | I16 | **Capability binding / custody** | `PolicyAdminCap` gates `migrate`; caps to the multisig | `config_tests`; scripts verify type, package and owner; cap IDs recorded in `deployments.json` | HOLDS in code; custody execution pending (OQ3, maintainer) |
 | I17 | **Funds** | — | no coins handled | N/A |
-| I18 | **Preflight (OPS):** env, chain identifier, CLI major.minor, balance, signer and mainnet guard are hard failures | `lib.sh` `preflight`; `publish.sh`; `transfer-authority.sh`; `make-immutable.sh` | code inspection; `publish.sh` and `transfer-authority.sh` run on testnet / localnet | HOLDS (signer pin missing on `make-immutable.sh`, F32) |
+| I18 | **Preflight (OPS):** env, chain identifier, CLI major.minor, balance, signer and mainnet guard are hard failures | `lib.sh` `preflight`; `publish.sh`; `transfer-authority.sh`; `make-immutable.sh` | code inspection; `publish.sh` and `transfer-authority.sh` run on testnet / localnet; `upgrade.sh` / `migrate.sh` preflight refusals run on localnet and mainnet (read-only) 2026-10-18 | HOLDS (signer pin missing on `make-immutable.sh`, F32) |
 | I19 | **Irreversible operations (OPS):** dry-run by default, separate typed confirmation, mainnet double guard, skipped run exits non-zero | `transfer-authority.sh`, `make-immutable.sh`; `upgrade.sh` / `migrate.sh` only write unsigned transactions | localnet rehearsal 2026-10-02 (transfer, burn) | HOLDS |
 | I20 | **Output parsing and partial failure (OPS):** `--json` + `jq`; exactly-one match by exact type; abort on empty IDs; recovery text after each signing step | `publish.sh`, `transfer-authority.sh` | code inspection; 2026-10-09 publication | HOLDS |
 | I21 | **Record-keeping (OPS):** original-id and published-at recorded after a publish, consumers bumped, git dependency re-pinned | `Published.toml`, `deployments.json`, `Move.toml`/`Move.lock`; runbook in `CUSTODY.md` / README | 2026-10-09 republication (`150e46d`, `428e61d`, `a03a532`); seal-client `deployments.ts` | HOLDS |
@@ -1045,9 +1138,9 @@ not a one-time token, so replay is **not applicable** (F12).
 
 | Move function | Builder | Test asserting target + arguments |
 | --- | --- | --- |
-| `config::migrate(&PolicyAdminCap, &mut PolicyConfig)` | `migrate.sh` (`sui client ptb --move-call`) | none (F31); `migrate.sh --verify` checks the result on-chain |
+| `config::migrate(&PolicyAdminCap, &mut PolicyConfig)` | `migrate.sh` (`sui client ptb --move-call`, dry-run first) | localnet rehearsal 2026-10-18 (executed; `PolicyConfigMigratedEvent` 1 -> 2); stub tests (F31, F35); `migrate.sh --verify` checks the result on-chain |
 | `0x2::package::make_immutable(UpgradeCap)` | `make-immutable.sh` (`sui client call` / unsigned tx) | localnet rehearsal 2026-10-02 |
-| package upgrade | `upgrade.sh` (`sui client upgrade`) | none (F31) |
+| package upgrade | `upgrade.sh` (`sui client upgrade`; `test-upgrade` on localnet, F34) | localnet rehearsal 2026-10-18 (executed by the multisig); stub tests (F31) |
 | object transfer | `transfer-authority.sh` (`sui client transfer`) | localnet rehearsal 2026-10-02; owner re-read |
 
 ### B.SEAL-1 Committee readiness (consumer configuration; owned by seal-ui and ADR-0002)
@@ -1101,7 +1194,7 @@ UI audits' concern (seal-ui).
 | Happy path | A — approve (unlimited, soulbound, single-use with uses), timelock before/after/at, publish, `migrate`, `init` |
 | Error path / abort codes | A — every code in every module, both NFT variants where applicable; every `expected_failure` names its location; mutation-checked |
 | Boundary / edge | A — exact 32- and 8-byte identities, a 7-byte identity, `unlock_ms` 0 and `u64::MAX`, string limits ±1, version ±1 |
-| Security-relevant | A− — cross-gate isolation, conformance vectors over contract code, version gate on every entry, frozen pass (F16), frozen gate (F10), pause+freeze (F21), check order (F23). **Missing:** the shell scripts have no automated tests (F31) |
+| Security-relevant | A− — cross-gate isolation, conformance vectors over contract code, version gate on every entry, frozen pass (F16), frozen gate (F10), pause+freeze (F21), check order (F23). The ops scripts have offline stub tests (`tests/scripts/ops_scripts_test.sh`, 21 checks, F31) |
 
 **Per module (`sui move coverage summary`):** `config` 100.00, `nft_gate` 100.00, `sealed_content`
 100.00, `timelock` 100.00.
@@ -1123,9 +1216,9 @@ UI audits' concern (seal-ui).
 | Policy assertions, layouts, registry, version gate | yes | — | `tests/*` |
 | Key server rejects a **non-owned** owned-object NFT (input resolution) | no | live testnet decrypt with a second wallet (seal-client has timelock and ABI-drift live suites, not an nft-gate round trip with negatives) | pre-mainnet gate (maintainer e2e) |
 | Key server **accepts a frozen** `AccessNFT` for any requester | no (Move side proven by a committed test) | live testnet: freeze a test pass, request a key from another address | F16 |
-| Wrong-version PTB refused by key servers after `migrate` | no | localnet/testnet rehearsal of upgrade + `migrate` | F31 |
+| Wrong-version PTB refused by key servers after `migrate` | no (the on-chain abort was executed on localnet 2026-10-18, F31) | live key servers: request a key against the superseded package after `migrate` | pre-mainnet gate (maintainer e2e) |
 | `nft_gate` against the live `0xd7ddaa94…` gates | no | live nft-gate decrypt round trip | pre-mainnet gate (maintainer e2e) |
-| Custody scripts | no | localnet rehearsal 2026-10-02 (publish, transfer to a 1-of-2 multisig, multisig burn); upgrade/migrate not yet run | F29, F31 |
+| Custody scripts | stub tests for `lib.sh` / `upgrade.sh` / `migrate.sh` (21 checks) | localnet rehearsals 2026-10-02 (publish, transfer to a 1-of-2 multisig, multisig burn) and 2026-10-18 (upgrade, `migrate`, `--verify`) | F29, F31 |
 | Publish linkage | yes on testnet | exercised by the 2026-10-09 publication; independent on-chain read this pass | F18 |
 
 ---
@@ -1150,7 +1243,7 @@ UI audits' concern (seal-ui).
 - [x] custody tooling with dry-run default, confirmation and on-chain verification — F9, F29
 - [x] npm package with provenance; docs sites import it — F13, F24
 - [x] publish verifies `access_gate` linkage — F18
-- [x] upgrade/`migrate` tooling written — F17 (the rehearsal is a pre-mainnet item, F31)
+- [x] upgrade/`migrate` tooling written — F17 (rehearsed on localnet 2026-10-18, F31)
 - [x] `original-id` and `published-at` recorded everywhere after a publish (OPS) — F8, B.SC-1
 - [x] Dependabot configured; release gate equals CI — F30
 - [x] hermetic frozen-pass, frozen-gate, paused and check-order tests — F16, F10, F21
@@ -1160,7 +1253,7 @@ UI audits' concern (seal-ui).
 - [ ] **Operator requirement before launch:** the `UpgradeCap` and `PolicyAdminCap` held by the
   multisig, a planned burn date set, then the burn — **blocking**; maintainer item (OQ3, B.3,
   `OPERATOR_TASKS.md` "Mainnet release custody")
-- [ ] localnet rehearsal of `upgrade.sh` + `migrate.sh` + `migrate.sh --verify` — F31
+- [x] localnet rehearsal of `upgrade.sh` + `migrate.sh` + `migrate.sh --verify` — F31 (2026-10-18, 0.0.8; found and fixed F34–F36; stub tests in CI)
 - [ ] live key-server tests: non-owned rejection; the frozen-pass outcome (F16); wrong-version refusal
   after `migrate`; a testnet `nft_gate` decrypt against a live `0xd7ddaa94…` gate — maintainer e2e
 - [ ] mainnet committee verified, `verifyKeyServers` on, t = 2 of independent operators (B.SEAL-1;
@@ -1217,8 +1310,8 @@ UI audits' concern (seal-ui).
    by default; documented).
 5. Every entry MUST take `&PolicyConfig` and call `config::check_version` first, and every upgrade
    that changes approval logic MUST bump `VERSION` and be followed promptly by `migrate` — holds in
-   code (I13); `upgrade.sh` enforces the bump and `CUSTODY.md` the prompt `migrate`; the scripts' first
-   execution is F31.
+   code (I13); `upgrade.sh` enforces the bump and `CUSTODY.md` the prompt `migrate`; the scripts were
+   executed end to end on localnet 2026-10-18 (F31).
 6. The `access_gate` dependency MUST be pinned to the commit SHA recording the `access_gate`
    publication this package links against, and a publish MUST verify that linkage — holds (F1, F18).
 7. Before mainnet, the `UpgradeCap` MUST be burned or held by the multisig per `CUSTODY.md`, and the
@@ -1327,7 +1420,7 @@ TS requirements are n/a (no TypeScript).
     multisig, `VERSION` and linkage checks) before the first real upgrade? And should `migrate` be
     executed in the same signing session as the upgrade? (F15, F17)
     - *(Decided 2026-10-08: scripted — `upgrade.sh`, `migrate.sh`; `migrate` is a separate transaction
-      run immediately after the upgrade — see F17. Rehearsal: F31.)*
+      run immediately after the upgrade — see F17. Rehearsed on localnet 2026-10-18: F31.)*
 11. **OQ11** Support content sealed under the superseded namespaces (`0x42cc18…`,
     `0x9f0563…`, `0x61c4aa…`) in seal-client, or declare it unsupported and correct the docs and
     `SECURITY.md`? (F27)
@@ -1346,7 +1439,8 @@ TS requirements are n/a (no TypeScript).
 - **Upgrade authority:** until the burn, one key (later the multisig) can change who may decrypt every
   existing ciphertext in the namespace. A lost `PolicyAdminCap` would make upgrades ineffective (F15).
   Both caps are with a single deploy key today.
-- **Untested upgrade path:** `upgrade.sh` / `migrate.sh` have not run on a chain (F31).
+- **Upgrade path not yet run on testnet or mainnet:** `upgrade.sh` / `migrate.sh` were rehearsed on localnet only (F31); the first
+  real run is custody execution (OQ3), and key-server refusal of the old version is a live test.
 - **Indefinite decryptability:** access cannot be revoked once a key is released. A pause under
   `pause_blocks_decryption` stops only new releases.
 - **Discovery spoofing:** look-alike pointers; only UI filtering protects users.
@@ -1414,17 +1508,29 @@ TS requirements are n/a (no TypeScript).
   2026-10-18) still pins `0.0.7` exactly and its `check:deployments` matched in its 2026-10-18 pass; docs and dev at `^0.0.7`.
   The coupling facts quoted from seal-client 0.0.19 above are unchanged in 0.0.20 (access-gate-client `^0.0.9`, `engines`, tests only).
   No finding or Section D box changes.
+- 2026-10-18 (fix wave) — F31 rehearsed and closed. **Rehearsal:** throwaway localnet (Sui 1.81.0, isolated `HOME` and keystore, deleted
+  afterwards; the real keystore untouched): `publish.sh localnet`, `transfer-authority.sh` to a 1-of-2 multisig, `upgrade.sh`, a
+  multisig-signed upgrade, `migrate.sh`, a multisig-signed `migrate`, `migrate.sh --verify`, and `seal_approve` against the old and new
+  packages before and after `migrate` (ids and transactions in F31). The preflight and refusal paths were exercised (mainnet read-only).
+  **Found and fixed (0.0.8, commit pending):** F34 (scripts could not run on localnet), F35 (stale or premature `migrate` record,
+  unchecked "latest"), F36 (CLI stdout diagnostics lost). **Added:** `tests/scripts/ops_scripts_test.sh` (stub `sui`, 21 checks) and a CI
+  step; shellcheck (run locally from `shellcheck-py`) clean over `scripts/` and `tests/scripts/`; Move build with lints as errors and 41/41
+  tests re-run green. **Dispositions:** F31 DEFERRED -> RESOLVED; F34, F35, F36 new, RESOLVED. **Counts (36 findings, 4 Positive):**
+  RESOLVED 23, ADJUDICATED 5, MITIGATED 2, ACCEPTED-RISK 2, DEFERRED 0. **Section D:** the pre-mainnet "localnet rehearsal of `upgrade.sh`
+  + `migrate.sh` + `--verify`" box ticked; the live key-server box stays open (maintainer). **Not run:** `make-immutable.sh` (the
+  2026-10-02 rehearsal stands), any signing on testnet or mainnet, and the live key-server tests. No Move source changed; 0.0.8 is
+  unreleased (the orchestrator tags it).
 
 ## Pre-save consistency checklist (this pass)
 
 - [x] Section A ↔ findings: GAP row I11 cites OQ3 (maintainer); I14 is HOLDS for soulbound and MITIGATED
-  for transferable (F16); caveats cite F10, F21, F23, F26, F31, F32.
+  for transferable (F16); caveats cite F10, F21, F23, F26, F32.
 - [x] Finding header ↔ body: consistent; "as found" text is labelled and each remediation describes
   what was done.
 - [x] Template line: base + SUI + SEAL + OPS + TS + SUI_CLIENT with dates; untriggered lenses named.
 - [x] Closing structure in order: Normative / Suggestions / OQ / Risks.
 - [x] Open questions: decisions recorded in place, none deleted.
-- [x] Section D boxes ↔ dispositions: unticked items name F31, OQ3, the operator tasks or the mainnet gate.
+- [x] Section D boxes ↔ dispositions: unticked items name OQ3, the operator tasks, the live key-server tests or the mainnet gate.
 - [x] Executive summary matches the current dispositions and ceiling (Medium, F16 mitigated).
 - [x] C.1 counts re-measured 2026-10-09 (41 tests; 100% per module).
-- [x] Re-verification log entry added.
+- [x] Re-verification log entry added (2026-10-18 fix wave: F31).
