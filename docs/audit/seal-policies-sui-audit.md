@@ -28,7 +28,7 @@
 - Not triggered: VUE, WALRUS, AUTH, PROXY, IMG, GO, RUST, WORKERS, SITE, PLATFORM. No lens registered
   for MCP or DB applies.
 
-**Package:** `seal_policies` v0.0.8 (0.0.7 is the released and published version; 0.0.8 changes only the ops
+**Package:** `seal_policies` v0.0.8 (released 2026-10-18; the on-chain package is unchanged — 0.0.8 changes only the ops
 scripts, their tests and `CUSTODY.md`, F31, F34–F36); edition 2024.
 
 - Framework rev `83f11dc85d5695a57894329b005b78d75f9bb059` (`Move.lock`, testnet).
@@ -52,10 +52,10 @@ scripts, their tests and `CUSTODY.md`, F31, F34–F36); edition 2024.
   owned by the deploy key. It is now recorded in the committed `deployments.json` (F19).
 - Custody: both caps are with the deploy key. The multisig transfer and the planned burn are the
   pre-mainnet `CUSTODY.md` process (`OPERATOR_TASKS.md` "Mainnet release custody"; OQ3).
-- npm `@meddleware/seal-policies-sui` **0.0.7** (published 2026-10-09T12:45Z) has an SLSA v1 provenance
-  attestation. Tag `v0.0.7` = `a03a532` (F24). 18 files. Still `latest` on 2026-10-18. Since then one commit changes
-  shipped content (`CUSTODY.md`, version bump to 0.0.8; the scripts themselves are not in `files`): it is unreleased
-  until the orchestrator tags it.
+- npm `@meddleware/seal-policies-sui` **0.0.8** (published 2026-10-18 15:49Z, tag `v0.0.8`; its publish `verify` ran the Move
+  tests and the shellcheck job including the new stub-CLI script tests) is `latest`; 0.0.7 (published 2026-10-09T12:45Z,
+  tag `v0.0.7` = `a03a532`, F24) carried the SLSA v1 provenance attestation recorded earlier. 0.0.8 changes shipped content
+  only in `CUSTODY.md` (the scripts themselves are not in `files`).
 - Consumers (re-read 2026-10-18): `@meddleware/seal-client` 0.0.20 (released 2026-10-18; exact devDependency `0.0.7`,
   `src/deployments.ts` generated from it; 0.0.19 on 2026-10-09); the docs and dev sites (`^0.0.7`).
 
@@ -1287,7 +1287,7 @@ UI audits' concern (seal-ui).
   - the `access_gate` git dependency is pinned to the commit recording `access_gate`'s latest
     publication (`7906954` → `0xd7ddaa94…`);
   - coupled releases with `access_gate` have a runbook (F22), and linkage is verified at publish (F18).
-- **Pre-v0.2 policy:** no compatibility findings are raised. The next release is 0.0.8. Legacy
+- **Pre-v0.2 policy:** no compatibility findings are raised. The current release is 0.0.8. Legacy
   namespaces (F27) are unsupported by decision, not a compatibility shim.
 - **Shared with access-gate-sui:**
   - F16 depends on `AccessNFT`'s `store` ability;
@@ -1518,8 +1518,8 @@ TS requirements are n/a (no TypeScript).
   tests re-run green. **Dispositions:** F31 DEFERRED -> RESOLVED; F34, F35, F36 new, RESOLVED. **Counts (36 findings, 4 Positive):**
   RESOLVED 23, ADJUDICATED 5, MITIGATED 2, ACCEPTED-RISK 2, DEFERRED 0. **Section D:** the pre-mainnet "localnet rehearsal of `upgrade.sh`
   + `migrate.sh` + `--verify`" box ticked; the live key-server box stays open (maintainer). **Not run:** `make-immutable.sh` (the
-  2026-10-02 rehearsal stands), any signing on testnet or mainnet, and the live key-server tests. No Move source changed; 0.0.8 is
-  unreleased (the orchestrator tags it).
+  2026-10-02 rehearsal stands), any signing on testnet or mainnet, and the live key-server tests. No Move source changed; 0.0.8 was
+  released the same day (tag `v0.0.8`, npm published, Move CI and the shellcheck/script-test jobs green).
 
 ## Pre-save consistency checklist (this pass)
 
