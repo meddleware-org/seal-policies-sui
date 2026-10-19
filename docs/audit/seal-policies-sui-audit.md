@@ -1520,6 +1520,8 @@ TS requirements are n/a (no TypeScript).
   + `migrate.sh` + `--verify`" box ticked; the live key-server box stays open (maintainer). **Not run:** `make-immutable.sh` (the
   2026-10-02 rehearsal stands), any signing on testnet or mainnet, and the live key-server tests. No Move source changed; 0.0.8 was
   released the same day (tag `v0.0.8`, npm published, Move CI and the shellcheck/script-test jobs green).
+- 2026-10-19 — dependency-bot status checked (read-only): `.github/dependabot.yml` carries the `ignore` rules and the repository has no open Dependabot pull requests (`gh pr list`, 2026-10-19). Versions, findings and gates were not re-examined in this pass.
+  - Dependabot policy encoded in .github/dependabot.yml (majors declined); open PRs merged 2026-10-19
 
 ## Pre-save consistency checklist (this pass)
 
