@@ -178,7 +178,7 @@ ACCEPTED-RISK 2, DEFERRED 0.
      `SECURITY.md` and the overview document the property; the test
      `a_frozen_transferable_pass_still_approves_for_anyone` pins it. OQ9 is decided ((a) plus (d)); the disposition is ADJUDICATED because the property is accepted by decision, not removed.
    - What remains: the protection is client-side. Content sealed by another client to a transferable
-     gate is exposed to this property, and the live key-server confirmation is still outstanding (C.2).
+     gate is exposed to this property; the live key-server confirmation was made on 2026-10-22 (C.2, F16).
 2. **F32, F33 (Info, ACCEPTED-RISK)** — `make-immutable.sh` has no `EXPECTED_SIGNER` check; the publish
    workflow no longer runs `npm audit` (no dependencies).
 
@@ -192,8 +192,8 @@ ACCEPTED-RISK 2, DEFERRED 0.
 The remaining work is maintainer or mainnet work:
 
 - executing the decided custody lifecycle (OQ3, `OPERATOR_TASKS.md` "Mainnet release custody");
-- live key-server tests (non-owner rejection, frozen-pass outcome, wrong-version refusal after
-  `migrate`; the on-chain half was rehearsed on localnet 2026-10-18, F31);
+- ~~live key-server tests (non-owner rejection, frozen-pass outcome, wrong-version refusal after
+  `migrate`)~~ — run on testnet 2026-10-22 (log entry, F16, F37);
 - mainnet committee terms (`OPERATOR_TASKS.md` "Mainnet Seal key servers") and the external review.
 
 ---
@@ -309,7 +309,7 @@ Critical / High / Medium / Low / Info / Positive.
 | `sui client object` on testnet: `PolicyConfig`, `UpgradeCap`, `PolicyAdminCap` | `PolicyConfig` shared, version 1; both caps owned by `0xa991ae11…164864a`; old `UpgradeCap` `0x12ee376f…` not found (burned) |
 | `npm pack --dry-run` | 18 files; no `docs/audit` |
 | `npm view @meddleware/seal-policies-sui` | versions 0.0.3–0.0.7; 0.0.7 with an SLSA v1 provenance attestation, `gitHead` `a03a532` |
-| Live key-server decrypt; live frozen-pass probe | **not run** (needs a funded second wallet and a committee round trip; maintainer e2e) |
+| Live key-server decrypt; live frozen-pass probe | **run 2026-10-22** (log entry: testnet committee, scratch gates, funded maintenance runner) |
 
 Scratch copies live outside the repository. The two coverage artefacts created inside the working tree
 (`.coverage_map.mvcov`, `traces/`) were removed.
@@ -913,8 +913,8 @@ write nothing the multisig has not signed), so the cost is delay.
   `sui` (21 checks: record lookup, `--verify` pass and three refusals, prepare pass and refusals, `upgrade.sh`
   refusals and failure output); CI runs it and shellcheck over `scripts/` and `tests/scripts/`. A mutation (the burned-cap
   `pipefail` exit) was caught by it during development.
-- Not covered here and still a pre-mainnet item: live key servers refusing the old version after `migrate`
-  (Section D, maintainer e2e), and the first multisig-signed upgrade on testnet or mainnet, which is custody execution
+- Live key servers refusing the old version after `migrate` and a multisig-signed upgrade on testnet were run on 2026-10-22 (log entry, F37); the first
+  upgrade of a mainnet package is custody execution
   (`OPERATOR_TASKS.md` "Mainnet release custody"). `make-immutable.sh` was not re-run (2026-10-02 rehearsal stands).
 
 ### F32 — `make-immutable.sh` has no `EXPECTED_SIGNER` check; `lib.sh` `expect_signer` is unused
