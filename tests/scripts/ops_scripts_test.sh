@@ -44,6 +44,7 @@ upgrade-capability = "0x88888888888888888888888888888888888888888888888888888888
 source = { local = "$d" }
 published-at = "$recorded_pkg"
 version = 1
+toolchain-version = "1.81.0"
 upgrade-capability = "$CAP"
 TOML
 }
@@ -53,7 +54,7 @@ write_stub() {
   cat > "$1/bin/sui" <<'STUB'
 #!/usr/bin/env bash
 case "$*" in
-  "--version") echo "sui 1.81.0-stub" ;;
+  "--version") echo "sui ${STUB_VERSION:-1.81.0-stub}" ;;
   "client active-env") echo localnet ;;
   "client active-address") echo 0x1 ;;
   "client object "*)
@@ -104,6 +105,11 @@ expect "verify: migrated, recorded package is the latest" 0 "is at version 2 = V
 STUB_CHAIN_VERSION=1 expect "verify: refuses before migrate executed" 1 "migrate has not executed" -- run "$R1" migrate.sh --verify
 STUB_CAP_PACKAGE="$PKG1" expect "verify: refuses a stale published-at (cap names another package)" 1 "is not the latest version" -- run "$R1" migrate.sh --verify
 STUB_CAP_PACKAGE="" expect "verify: a burned cap is a note, not a failure" 0 "was not found (burned?)" -- run "$R1" migrate.sh --verify
+
+# ── preflight: the recorded toolchain ────────────────────────────────────────────────────────────────
+STUB_VERSION=1.82.2-stub expect "preflight: another major.minor CLI is refused" 1 "does not match Published.toml toolchain-version 1.81.0" -- run "$R1" migrate.sh --verify
+STUB_VERSION=1.82.2-stub ALLOW_TOOLCHAIN_CHANGE=1 expect "preflight: ALLOW_TOOLCHAIN_CHANGE=1 admits it with a warning" 0 "instead of the recorded 1.81.0" -- run "$R1" migrate.sh --verify
+STUB_VERSION=1.81.7-stub expect "preflight: a patch difference is fine" 0 "is at version 2 = VERSION" -- run "$R1" migrate.sh --verify
 
 # ── migrate.sh (prepare) ─────────────────────────────────────────────────────────────────────────────
 STUB_CHAIN_VERSION=1 expect "prepare: writes the unsigned transaction" 0 "migrate 1 -> 2" -- run "$R1" migrate.sh

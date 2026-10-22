@@ -163,7 +163,7 @@ and released:
   `access_gate` `0xd7ddaa94…` (which forbids the pause-blocks-decryption plus freeze combination and
   fixes the pass kind), release 0.0.7. The old `0x61c4aa…` is immutable.
 
-**Findings by disposition (36 findings, 4 of them Positive):** RESOLVED 24, ADJUDICATED 6, MITIGATED 0,
+**Findings by disposition (37 findings, 4 of them Positive):** RESOLVED 25, ADJUDICATED 6, MITIGATED 0,
 ACCEPTED-RISK 2, DEFERRED 0.
 
 **Findings not fully closed, in order of importance:**
@@ -537,6 +537,7 @@ caveats closed by `652e7b6`)
 `a_frozen_transferable_pass_still_approves_for_anyone` (`652e7b6`): a stranger's `seal_approve`
 succeeds on a frozen pass (passes at HEAD).
 
+- **Live confirmation (2026-10-22):** on the public testnet committee a stranger (an unfunded fresh key) was refused while the pass was owned by its holder and decrypted the same ciphertext once the holder froze the pass (`public_freeze_object` `HctRUdKKsuvaUggHQirzjbHh5g1vhjorrnef1A5dkJL4`, pass `AaWTMPB4K8sMzGyMECYUQoimPxhzqTnHMCkAwg8X5y2N` bought on a scratch transferable gate). The property is real, not only a Move test.
 - The `public_share_object` variant aborts: a shared object must be new.
 - Soulbound passes (`key` only) can only be frozen by `access_gate`, which never does so; the module
   comment in `tests/nft_gate_tests.move` records that the compiler is the test.
@@ -1011,6 +1012,20 @@ checking it.
 **Remediation / evidence (0.0.8):** on failure both files are printed; the last line must be base64 or the script refuses and shows
 the output. Both are pinned by the stub tests.
 
+### F37 — `upgrade.sh` and `migrate.sh` refused every CLI but the one that published, which cannot build an upgrade once the network's protocol moves on
+
+**Severity:** Low   **Disposition:** RESOLVED (commit pending; scripts only, not shipped: `lib.sh` honours `ALLOW_TOOLCHAIN_CHANGE=1`; stub tests "preflight: …")
+**Where:** `scripts/lib.sh` `preflight` (the `toolchain-version` major.minor check); `scripts/upgrade.sh`.
+
+**Issue (found 2026-10-22, testnet rehearsal):** `sui client upgrade` reads the network's protocol configuration. With the recorded CLI (1.81.0)
+the testnet's protocol version 139 stopped it ("protocol version 139 is newer than the maximum version 138 supported by this CLI"), and the shared
+preflight refused any CLI of another major.minor, with no override (only `publish.sh` had `ALLOW_TOOLCHAIN_CHANGE=1`). So at the moment a fix must be
+shipped inside the verification window, the scripts could not be used with a CLI that can build it. Fail-closed; the manual commands in `CUSTODY.md` worked.
+
+**Remediation / evidence:** `preflight` now admits another major.minor when `ALLOW_TOOLCHAIN_CHANGE=1`, with a warning, and the refusal names the override. Tests:
+`preflight: another major.minor CLI is refused`, `… ALLOW_TOOLCHAIN_CHANGE=1 admits it with a warning`, `… a patch difference is fine` (`ops_scripts_test.sh`, 24 checks; shellcheck
+clean). Real-chain proof: the 2026-10-22 rehearsal ran `upgrade.sh` and `migrate.sh` with CLI 1.82.2 and the override. `CUSTODY.md` (step 2) says so.
+
 ---
 
 ## Section A — Invariant verification matrix
@@ -1223,11 +1238,11 @@ UI audits' concern (seal-ui).
 | Path | Hermetic unit test? | Deferred to | Tracking |
 | --- | --- | --- | --- |
 | Policy assertions, layouts, registry, version gate | yes | — | `tests/*` |
-| Key server rejects a **non-owned** owned-object NFT (input resolution) | no | live testnet decrypt with a second wallet (seal-client has timelock and ABI-drift live suites, not an nft-gate round trip with negatives) | pre-mainnet gate (maintainer e2e) |
-| Key server **accepts a frozen** `AccessNFT` for any requester | no (Move side proven by a committed test) | live testnet: freeze a test pass, request a key from another address | F16 |
-| Wrong-version PTB refused by key servers after `migrate` | no (the on-chain abort was executed on localnet 2026-10-18, F31) | live key servers: request a key against the superseded package after `migrate` | pre-mainnet gate (maintainer e2e) |
-| `nft_gate` against the live `0xd7ddaa94…` gates | no | live nft-gate decrypt round trip | pre-mainnet gate (maintainer e2e) |
-| Custody scripts | stub tests for `lib.sh` / `upgrade.sh` / `migrate.sh` (21 checks) | localnet rehearsals 2026-10-02 (publish, transfer to a 1-of-2 multisig, multisig burn) and 2026-10-18 (upgrade, `migrate`, `--verify`) | F29, F31 |
+| Key server rejects a **non-owned** owned-object NFT (input resolution) | no | **done 2026-10-22** on the public testnet committee (seal-client `tests/integration/nft-gate.integration.test.ts`, maintainer-run): a stranger presenting the holder's soulbound pass is refused (`InvalidParameterError`, "PTB contains an invalid parameter, possibly a newly created object that the FN has not yet seen") | pre-mainnet gate (log entry) |
+| Key server **accepts a frozen** `AccessNFT` for any requester | no (Move side proven by a committed test) | **done 2026-10-22:** a transferable pass was frozen (`public_freeze_object`, tx `HctRUdKKsuvaUggHQirzjbHh5g1vhjorrnef1A5dkJL4`); before it a stranger was refused, after it the same stranger decrypted | F16 |
+| Wrong-version PTB refused by key servers after `migrate` | no (the on-chain abort was executed on localnet 2026-10-18, F31) | **done 2026-10-22** on a scratch testnet publication: after `migrate` the retired `published-at` is refused by the key servers (`NoAccessError`), the new one decrypts the same ciphertext; the dry run aborts `config::check_version` code 1 | F31 |
+| `nft_gate` against the live `0xd7ddaa94…` gates | no | **done 2026-10-22:** scratch gates on the live `access_gate` (soulbound, pause-blocks-decryption policy), a bought pass, a decrypt round trip through the live `seal_policies` `0x0c8f7349…` and the public committee; negatives: other gate (`E_WRONG_GATE`), exhausted pass (`E_EXHAUSTED`), paused gate (`E_GATE_PAUSED`), un-namespaced identity (`E_ID_NOT_NAMESPACED`, dry run), time-lock too early (`E_TOO_EARLY`) | log entry |
+| Custody scripts | stub tests for `lib.sh` / `upgrade.sh` / `migrate.sh` (24 checks) | localnet rehearsals 2026-10-02 (publish, transfer to a 1-of-2 multisig, multisig burn) and 2026-10-18 (upgrade, `migrate`, `--verify`); testnet 2026-10-22 (publish, transfer to a 2-of-2 multisig, `upgrade.sh`, `migrate.sh`, `--verify`; F37) | F29, F31, F37 |
 | Publish linkage | yes on testnet | exercised by the 2026-10-09 publication; independent on-chain read this pass | F18 |
 
 ---
@@ -1263,8 +1278,8 @@ UI audits' concern (seal-ui).
   multisig, a planned burn date set, then the burn — **blocking**; maintainer item (OQ3, B.3,
   `OPERATOR_TASKS.md` "Mainnet release custody")
 - [x] localnet rehearsal of `upgrade.sh` + `migrate.sh` + `migrate.sh --verify` — F31 (2026-10-18, 0.0.8; found and fixed F34–F36; stub tests in CI)
-- [ ] live key-server tests: non-owned rejection; the frozen-pass outcome (F16); wrong-version refusal
-  after `migrate`; a testnet `nft_gate` decrypt against a live `0xd7ddaa94…` gate — maintainer e2e
+- [x] live key-server tests: non-owned rejection; the frozen-pass outcome (F16); wrong-version refusal
+  after `migrate`; a testnet `nft_gate` decrypt against a live `0xd7ddaa94…` gate — run 2026-10-22 (log entry for digests; seal-client `tests/integration/nft-gate.integration.test.ts` repeats all but the wrong-version case)
 - [ ] mainnet committee verified, `verifyKeyServers` on, t = 2 of independent operators (B.SEAL-1;
   `OPERATOR_TASKS.md` "Mainnet Seal key servers"; owned by seal-ui/ADR-0002)
 - [ ] mainnet publication (`EXPECTED_SIGNER` and `MAINNET_CONFIRM` set) — mainnet-blocked
@@ -1540,6 +1555,13 @@ TS requirements are n/a (no TypeScript).
   - **F23 MITIGATED -> RESOLVED:** `SECURITY.md` scope (superseded packages unsupported), the `tests/nft_gate_tests.move` comment (OQ7), the user-guide freeze note plus dev-guide rule 7, and the README runbook rows for `upgrade.sh` and `migrate.sh` (details under F23). Section A/B script table updated.
   - **Measured:** `sui move build` clean and `sui move test` 41/41 passed (sui 1.81.0). Counts: **24 RESOLVED, 6 ADJUDICATED, 0 MITIGATED, 2 ACCEPTED-RISK, 0 DEFERRED**; 4 Positive (36 findings). No Section D box changed. The docs ship in the npm tarball (`docs/onchain/`), so the corrected guides reach npm with the next release; no version bump for docs.
 - 2026-10-22 (cross-repo note) — seal-client 0.0.22 (local commit, not released) implements the OQ5 abort mapping (`src/aborts.ts`; its audit S7); F3 and OQ5 text updated. No disposition changes.
+- 2026-10-22 (live key-server tests and a testnet custody rehearsal; scripts fixed, local commit, not released) — Section D live gate run.
+  - **Key-server tests (public testnet committee, 2-of-3; maintainer-run test in seal-client):** scratch gates created on the LIVE `access_gate` `0xd7ddaa94…` by the maintenance runner `0xbf4bd853…424f` (G1 `0x2b4ff3f4…ca17` soulbound, 1 use, policy: pause blocks decryption and access, freeze needs unpaused; G2 `0xad8c82f9…92eb` transferable; G3 `0xd7612af0…3937`). Pass B `0x686c6e29…beba` on G1. Positive: the owner decrypts through the live `seal_policies` `0x0c8f7349…`. Negatives, each with a fresh controller (a controller caches the keys it fetched): non-owner → `InvalidParameterError`; pass of G1 against content of G3 → `NoAccessError`, dry run `nft_gate::E_WRONG_GATE` (2); exhausted pass → `NoAccessError`, `E_EXHAUSTED` (3); G1 paused (tx `61CYonoPifx9t9Du4vQW9mtFk6mhJKP4tysZeBBriYKi`, unpaused `63npSZscbEX53uee6NjyEZAM5TJUnFwTWD6fw7FU2ssk`) → `NoAccessError`, `E_GATE_PAUSED` (4), and the owner decrypts again after unpausing; time-lock a day ahead → `NoAccessError`, `timelock::E_TOO_EARLY` (2). The key servers' error never carries the Move abort; the codes above are from the same approve PTB simulated by the client (seal-client audit S7 follow-up).
+  - **F16:** transferable pass `AaWTMPB4K8sMzGyMECYUQoimPxhzqTnHMCkAwg8X5y2N` (G2): owner decrypts, a stranger is refused, the holder freezes it (`HctRUdKKsuvaUggHQirzjbHh5g1vhjorrnef1A5dkJL4`), the stranger decrypts. Confirmed live; the seal-client default (refuse to seal to a transferable gate) was seen refusing too.
+  - **Wrong version after `migrate` (scratch `seal_policies`, its own publication linking the live `access_gate`):** publish `Dfoayt5QSURemcmGgeRKwoSMaW4Qv1Y2qa5xhDvma4VB` (package `0x8f48b700…3041`, `PolicyConfig` `0x63716319…1702`); both caps transferred to a 2-of-2 multisig (`Ei6P4yhYWZTayUB5KJjk1AJH22W1yz3cgPG6zgaQb2VD`, `8KhonJiG9GaUhXkv14xCF8fJP4pBW97cQ67zLq6YMC1Z`); `upgrade.sh` with CLI 1.82.2 (F37) → upgrade `HBJyoLTwY3gEy9PFWqrVhrAff3h3rdGbA1vFPNB8Fhb5` (v2 `0x282b7f9b…8603`), new `published-at` recorded, `migrate.sh` → `3KAqyC5ruxfh3ZYP2NeJC238RxJ74mq58MRNsm6h397u` (`PolicyConfigMigratedEvent` 1 → 2), `migrate.sh --verify` OK. Before `migrate`: v1 decrypts, v2 refused (`config::check_version`, code 1). After: v1 refused by the key servers (`NoAccessError`; dry run `config::E_WRONG_VERSION`), v2 decrypts the same ciphertext. The ciphertext was sealed under the original id once.
+  - **Fixed (F37):** `scripts/lib.sh` (`ALLOW_TOOLCHAIN_CHANGE=1`), `tests/scripts/ops_scripts_test.sh` (+3 checks, 24 total), `CUSTODY.md` (step 2 and the rehearsal paragraph). No Move change; no version bump (scripts do not ship; `CUSTODY.md` follows the docs-only precedent).
+  - **Counts (37 findings, 4 Positive):** RESOLVED 25 (adds F37), ADJUDICATED 6, MITIGATED 0, ACCEPTED-RISK 2, DEFERRED 0. Section D: the live key-server box is ticked; the mainnet and operator boxes are unchanged.
+  - **Not exercised:** a mainnet committee; Permissioned-mode servers; a retired version on the LIVE package (the live `PolicyConfig` is at version 1).
 
 ## Pre-save consistency checklist (this pass)
 
@@ -1555,3 +1577,4 @@ TS requirements are n/a (no TypeScript).
 - [x] C.1 counts re-measured 2026-10-09 (41 tests; 100% per module).
 - [x] Re-verification log entry added (2026-10-18 fix wave: F31).
 - [x] 2026-10-22 (close-out): F16 header, executive summary, Section A I14 and counts agree (ADJUDICATED); OQ2, OQ4, OQ5 carry their decisions; log entry added.
+- [x] 2026-10-22 (live tests): F37 added (RESOLVED); the live key-server Section D box and four C.2 rows updated with digests; counts 37 findings (RESOLVED 25); log entry added.

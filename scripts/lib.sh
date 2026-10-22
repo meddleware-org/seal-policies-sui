@@ -94,7 +94,15 @@ preflight() {
   tool="$(published_field toolchain-version)"
   cli="$(sui --version | awk '{print $2}' | cut -d- -f1)"
   if [ -n "$tool" ] && [ "${cli%.*}" != "${tool%.*}" ]; then
-    log "ERROR: sui CLI $cli does not match Published.toml toolchain-version $tool (major.minor)."; exit 1
+    if [ "${ALLOW_TOOLCHAIN_CHANGE:-}" = "1" ]; then
+      # An upgrade must be built by a CLI that knows the network's current protocol version (`protocol version N
+      # is newer than the maximum version M supported by this CLI`), which can be newer than the one that published.
+      log "WARNING: running sui CLI $cli instead of the recorded $tool (ALLOW_TOOLCHAIN_CHANGE=1)."
+    else
+      log "ERROR: sui CLI $cli does not match Published.toml toolchain-version $tool (major.minor)."
+      log "       For a deliberate move to a newer CLI (the network's protocol version outgrew the recorded one), re-run with ALLOW_TOOLCHAIN_CHANGE=1."
+      exit 1
+    fi
   fi
   if [ "$NETWORK" = "mainnet" ] && [ "${MAINNET_CONFIRM:-}" != "1" ]; then
     log "SKIPPED: mainnet — re-run with MAINNET_CONFIRM=1 to proceed."; exit 78

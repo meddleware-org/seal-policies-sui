@@ -59,6 +59,9 @@ Scripts do the checking and the unsigned transactions; the multisig signs (see t
    version the on-chain `PolicyConfig` names and the multisig owns the UpgradeCap, then writes the unsigned
    upgrade transaction. Sign and execute it as above, and record the new `published-at` in `Published.toml`
    (on localnet: in the git-ignored `Pub.localnet.toml`, where `upgrade.sh` uses `sui client test-upgrade`).
+   `sui client upgrade` needs a CLI that knows the network's current protocol version (an older one stops with `protocol version N is
+   newer than the maximum version M supported by this CLI`); run the scripts with that CLI and `ALLOW_TOOLCHAIN_CHANGE=1`, which admits a
+   different major.minor than the one recorded in `Published.toml` with a warning.
 3. `NETWORK=<network> MULTISIG_ADDRESS=0x… bash scripts/migrate.sh` writes the unsigned
    `config::migrate(&PolicyAdminCap, &mut PolicyConfig)` call; execute it as the multisig, right away (a slow
    migrate extends the window in which a known-bad version keeps approving). The script refuses unless the recorded
@@ -98,3 +101,9 @@ new one aborted `E_WRONG_VERSION`; after it the old one aborted `config::check_v
 approved. To repeat: start `sui start --with-faucet --force-regenesis` with a scratch `HOME`, add a `localnet`
 env, fund the address from the faucet, work in a scratch copy of this directory. The offline checks of the
 scripts (a stub `sui`) are `bash tests/scripts/ops_scripts_test.sh`, run in CI.
+
+The same sequence ran on **testnet** on 2026-10-22 on a scratch publication linking the live `access_gate` (never the live package):
+`publish.sh testnet`, `transfer-authority.sh --include-upgrade-cap` to a 2-of-2 multisig of two throwaway keys, `VERSION` 2,
+`upgrade.sh` (CLI 1.82.2, `ALLOW_TOOLCHAIN_CHANGE=1`; both members signed), the new `published-at` recorded in `Published.toml`,
+`migrate.sh` (both signed), `migrate.sh --verify`; the retired package was then refused by the public Seal key servers and the new one
+served the same ciphertext. The audit (F37, Section D) has the digests.
