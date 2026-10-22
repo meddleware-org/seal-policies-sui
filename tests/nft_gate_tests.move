@@ -366,7 +366,7 @@ fun approve_single_use_pass_with_uses_left_succeeds_without_consuming() {
 
 #[test]
 fun approve_on_paused_gate_still_succeeds() {
-    // Documents current behaviour (see audit OQ): pausing a gate stops purchases, not decryption.
+    // Documents current behaviour (audit OQ7, decided 2026-09-28): pausing a gate stops purchases, not decryption.
     let mut s = ts::begin(CREATOR);
     make_gate(&mut s, false, 0);
     s.next_tx(CREATOR);

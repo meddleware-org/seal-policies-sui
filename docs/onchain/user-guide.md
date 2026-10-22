@@ -17,7 +17,7 @@ the right identity, and the Seal key servers check the policy when someone asks 
 - **Freezing the gate** never stops pass-holders from decrypting. **Pausing** it does only if the
   gate was created with the rule *pausing also blocks unlocking* (shown by the tool that created
   it); decryption then resumes when the gate is unpaused. Files already decrypted stay decrypted.
-- **Transferable passes:** if a pass is sold or sent to someone else, the new holder can decrypt.
+- **Transferable passes:** if a pass is sold or sent to someone else, the new holder can decrypt. A holder can also freeze or share a transferable pass, after which anyone can present it and decrypt: use a soulbound gate for content that must stay private to its buyers.
 - **Once decrypted, always decrypted:** a holder who has decrypted a file keeps the plaintext and
   can obtain the key again while they hold a valid pass. Access cannot be revoked retroactively.
 

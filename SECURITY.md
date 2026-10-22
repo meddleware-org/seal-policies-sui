@@ -11,8 +11,9 @@ This policy covers security issues in:
 - The discovery registry (`sources/sealed_content.move`) as it affects integrity of published
   pointers
 - The published testnet package at
-  `0x0c8f73490b14836e6a7a724fb46b242cb061d04a5f193fd637159997f8a1773d` (and the superseded `0x61c4aaa431cc33a41a9db34621e2925fc8eb4e3b3f1d70eaeb8d8c2b73507e42`, `0x42cc181f851ef702c1fddc9b925553f03b71784edff49d80fbc260055f86d612`
-  while content sealed under it is in use)
+  `0x0c8f73490b14836e6a7a724fb46b242cb061d04a5f193fd637159997f8a1773d`. The superseded packages
+  (`0x61c4aaa431cc33a41a9db34621e2925fc8eb4e3b3f1d70eaeb8d8c2b73507e42`, `0x42cc181f851ef702c1fddc9b925553f03b71784edff49d80fbc260055f86d612`)
+  are unsupported: content sealed under their namespaces is not covered, and their upgrade capabilities are burned
 
 It does not cover:
 

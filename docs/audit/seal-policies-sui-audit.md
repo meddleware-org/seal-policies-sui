@@ -163,7 +163,7 @@ and released:
   `access_gate` `0xd7ddaa94…` (which forbids the pause-blocks-decryption plus freeze combination and
   fixes the pass kind), release 0.0.7. The old `0x61c4aa…` is immutable.
 
-**Findings by disposition (36 findings, 4 of them Positive):** RESOLVED 23, ADJUDICATED 6, MITIGATED 1,
+**Findings by disposition (36 findings, 4 of them Positive):** RESOLVED 24, ADJUDICATED 6, MITIGATED 0,
 ACCEPTED-RISK 2, DEFERRED 0.
 
 **Findings not fully closed, in order of importance:**
@@ -179,8 +179,7 @@ ACCEPTED-RISK 2, DEFERRED 0.
      `a_frozen_transferable_pass_still_approves_for_anyone` pins it. OQ9 is decided ((a) plus (d)); the disposition is ADJUDICATED because the property is accepted by decision, not removed.
    - What remains: the protection is client-side. Content sealed by another client to a transferable
      gate is exposed to this property, and the live key-server confirmation is still outstanding (C.2).
-2. **F23 (Info, MITIGATED)** — two or three documentation nits remain.
-3. **F32, F33 (Info, ACCEPTED-RISK)** — `make-immutable.sh` has no `EXPECTED_SIGNER` check; the publish
+2. **F32, F33 (Info, ACCEPTED-RISK)** — `make-immutable.sh` has no `EXPECTED_SIGNER` check; the publish
    workflow no longer runs `npm audit` (no dependencies).
 
 **Posture.**
@@ -712,7 +711,7 @@ using `#[expected_failure(abort_code = N)]` without `location`.
 
 ### F23 — Documentation drift (this pass)
 
-**Severity:** Info   **Disposition:** MITIGATED (most items corrected; residuals below)
+**Severity:** Info   **Disposition:** RESOLVED (corrected in `652e7b6`, `a03a532`; the four residuals fixed 2026-10-22, commit pending)
 
 **Corrected (`652e7b6`, `a03a532`):**
 
@@ -726,7 +725,7 @@ using `#[expected_failure(abort_code = N)]` without `location`.
 - `docs/onchain/overview.md`: the superseded namespaces are declared unsupported (F27).
 - `npm-publish.yml`: the `verify` job calls `move-ci.yml`; the comments describe it.
 
-**Residual (Info, docs only):**
+**Residual (Info, docs only; all fixed 2026-10-22, commit pending):**
 
 - `SECURITY.md` "Scope" still names the superseded `0x61c4aa…` and `0x42cc18…` as covered "while content
   sealed under it is in use", which contradicts the decision that superseded namespaces are unsupported.
@@ -736,7 +735,17 @@ using `#[expected_failure(abort_code = N)]` without `location`.
 - The README runbook table lists four scripts; `upgrade.sh` and `migrate.sh` are documented in
   `CUSTODY.md` and `CLAUDE.md` only.
 
-**Remediation / evidence:** fix the residual lines at the next documentation touch; none affects behaviour.
+**Remediation / evidence (2026-10-22):** the four residuals are fixed and none changes behaviour.
+
+- `SECURITY.md` "Scope" now lists only the current package as covered and says the superseded packages
+  (`0x61c4aa…`, `0x42cc18…`) are unsupported with their upgrade capabilities burned (F27, OQ8, OQ11).
+- `tests/nft_gate_tests.move` says "audit OQ7, decided 2026-09-28" instead of "see audit OQ" (a comment).
+- The user guide's "Transferable passes" bullet and a new dev-guide rule 7 say a holder can freeze or share a
+  transferable pass and that content that must stay private belongs on a soulbound gate (`seal-client` refuses
+  transferable gates unless `allowTransferableGates: true`).
+- The README runbook table lists `scripts/upgrade.sh` and `scripts/migrate.sh [--verify]`.
+- Proof of no behaviour change: `sui move build` and `sui move test` (41/41 passed) on the edited tree; the only
+  Move file touched is a comment in the test module.
 
 ### F24 — npm 0.0.6 ships the stale audit and pre-HEAD docs
 
@@ -1168,8 +1177,8 @@ UI audits' concern (seal-ui).
 | Transfer authority | `transfer-authority.sh` | README; CUSTODY step 2 |
 | Burn | `make-immutable.sh` | README; CUSTODY step 5 |
 | Multisig address | `multisig-address.sh` | README; CUSTODY "The multisig" |
-| Upgrade | `upgrade.sh` | CUSTODY "Upgrading…" step 2 (not in the README table, F23) |
-| `migrate` | `migrate.sh [--verify]` | CUSTODY "Upgrading…" steps 3–4 (not in the README table, F23) |
+| Upgrade | `upgrade.sh` | README table; CUSTODY "Upgrading…" step 2 (F23) |
+| `migrate` | `migrate.sh [--verify]` | README table; CUSTODY "Upgrading…" steps 3–4 (F23) |
 | Coupled `access_gate` release | — (procedure) | CUSTODY "Coupled releases (`access_gate`)"; SECURITY.md |
 
 ### B.TS-1/2/3 npm package (TS lens, package rows only)
@@ -1230,7 +1239,7 @@ UI audits' concern (seal-ui).
 - [x] compiles; 41/41 hermetic tests green against the pinned git dependency; lint clean (warnings are errors in CI)
 - [x] side-effect freedom verified for all `seal_approve*`; every abort code tested with its location (F20)
 - [x] version gate on every entry, with wrong-version tests (F15)
-- [x] `SECURITY.md` present (residual wording F23)
+- [x] `SECURITY.md` present (scope wording corrected, F23, 2026-10-22)
 - [x] shellcheck in CI; script inventory complete; every irreversible step dry-run by default with its own typed confirmation (OPS)
 
 ### pre-testnet *(the package is on testnet)*
@@ -1527,6 +1536,9 @@ TS requirements are n/a (no TypeScript).
   - **F16 MITIGATED -> ADJUDICATED:** OQ9 was decided ((a) soulbound-only sealing in the clients plus (d) accept and document for the contract); the behaviour is intended, documented (`SECURITY.md`, `docs/onchain/overview.md`) and pinned by `a_frozen_transferable_pass_still_approves_for_anyone`. Residual unchanged: the refusal is client-side, and the live key-server frozen-pass confirmation stays an open Section D gate (maintainer e2e).
   - **Decided 2026-10-22:** OQ2 (no bounded-decryption policy), OQ4 (keep `publish` permissionless; clients filter publishers), OQ5 (clients disambiguate aborts by `(module, code)`; implementation task S7 for seal-client stays open). F32 and F33 stay ACCEPTED-RISK, reasons confirmed.
   - Counts: **23 RESOLVED, 6 ADJUDICATED, 1 MITIGATED (F23), 2 ACCEPTED-RISK, 0 DEFERRED**; 4 Positive (36 findings). Not re-run: the Move tests and the scripts (no source change).
+- 2026-10-22 (fix wave) — F23 residuals fixed (docs and one test comment); no Move logic changed.
+  - **F23 MITIGATED -> RESOLVED:** `SECURITY.md` scope (superseded packages unsupported), the `tests/nft_gate_tests.move` comment (OQ7), the user-guide freeze note plus dev-guide rule 7, and the README runbook rows for `upgrade.sh` and `migrate.sh` (details under F23). Section A/B script table updated.
+  - **Measured:** `sui move build` clean and `sui move test` 41/41 passed (sui 1.81.0). Counts: **24 RESOLVED, 6 ADJUDICATED, 0 MITIGATED, 2 ACCEPTED-RISK, 0 DEFERRED**; 4 Positive (36 findings). No Section D box changed. The docs ship in the npm tarball (`docs/onchain/`), so the corrected guides reach npm with the next release; no version bump for docs.
 
 ## Pre-save consistency checklist (this pass)
 

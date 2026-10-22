@@ -31,6 +31,10 @@ The TypeScript side is `@meddleware/seal-client` (policy registry + `SealControl
 6. **Surface a paused gate distinctly.** `nft_gate` code `4` (`E_GATE_PAUSED`) means the gate is
    paused and its policy blocks decryption while paused — tell the user access resumes when the
    operator unpauses, rather than reporting a missing or invalid pass.
+7. **Seal to soulbound gates.** The holder of a transferable `AccessNFT` can freeze or share it
+   (`public_freeze_object`), after which anyone can present it and the policy approves, for all content of that
+   gate. Content that must stay private to its buyers belongs on a soulbound gate; `seal-client` refuses to
+   seal to a transferable gate unless `allowTransferableGates: true`.
 
 ## The approve PTB (what the key server dry-runs)
 
