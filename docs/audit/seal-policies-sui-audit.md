@@ -75,7 +75,7 @@ scripts, their tests and `CUSTODY.md`, F31, F34–F36); edition 2024.
 - But the policies decide confidentiality of every sealed ciphertext.
 - Upgrade authority can change who may decrypt existing content.
 - A policy-level bypass is a confidentiality breach for a whole gate.
-- Realised ceiling at this pass: **Medium** (F16, now MITIGATED: the contract still approves a frozen
+- Realised ceiling at this pass: **Medium** (F16, now ADJUDICATED: the contract still approves a frozen
   transferable pass; the clients refuse to seal to transferable gates by default).
 
 **Status:** re-verified 2026-10-09. This is the fifth pass. It covers:
@@ -163,12 +163,12 @@ and released:
   `access_gate` `0xd7ddaa94…` (which forbids the pause-blocks-decryption plus freeze combination and
   fixes the pass kind), release 0.0.7. The old `0x61c4aa…` is immutable.
 
-**Findings by disposition (36 findings, 4 of them Positive):** RESOLVED 23, ADJUDICATED 5, MITIGATED 2,
+**Findings by disposition (36 findings, 4 of them Positive):** RESOLVED 23, ADJUDICATED 6, MITIGATED 1,
 ACCEPTED-RISK 2, DEFERRED 0.
 
 **Findings not fully closed, in order of importance:**
 
-1. **F16 (Medium, MITIGATED) — a frozen transferable pass gives everyone access to a gate's content.**
+1. **F16 (Medium, ADJUDICATED 2026-10-22; was MITIGATED) — a frozen transferable pass gives everyone access to a gate's content.**
    - A holder of a transferable `AccessNFT` (`key, store`) can call
      `transfer::public_freeze_object` on it. The pass becomes an immutable object that **any** address
      can pass as `&AccessNFT` in a Seal dry run, and `nft_gate::seal_approve` approves anyone for all
@@ -176,7 +176,7 @@ ACCEPTED-RISK 2, DEFERRED 0.
    - The contract is unchanged on purpose (decision, OQ9): Sealed Storage uses soulbound gates;
      `seal-client` refuses to seal to a transferable gate unless `allowTransferableGates: true`;
      `SECURITY.md` and the overview document the property; the test
-     `a_frozen_transferable_pass_still_approves_for_anyone` pins it.
+     `a_frozen_transferable_pass_still_approves_for_anyone` pins it. OQ9 is decided ((a) plus (d)); the disposition is ADJUDICATED because the property is accepted by decision, not removed.
    - What remains: the protection is client-side. Content sealed by another client to a transferable
      gate is exposed to this property, and the live key-server confirmation is still outstanding (C.2).
 2. **F23 (Info, MITIGATED)** — two or three documentation nits remain.
@@ -369,7 +369,7 @@ were consulted through search summaries on 2026-10-03; they were not re-fetched 
 
 ### F4 — `sealed_content::publish` permissionless and unauthenticated
 
-**Severity:** Info   **Disposition:** ADJUDICATED (by design; OQ4 open)
+**Severity:** Info   **Disposition:** ADJUDICATED (by design; OQ4 decided 2026-10-22: keep permissionless, clients filter publishers)
 
 - See B.4. The behaviour is pinned by `publish_is_permissionless_and_unvalidated`.
 - **Since 2026-09-30 (D9):**
@@ -515,7 +515,7 @@ caveats closed by `652e7b6`)
 
 ### F16 — A holder can freeze a transferable pass, making the gate's content decryptable by anyone, forever
 
-**Severity:** Medium   **Disposition:** MITIGATED (decision recorded under OQ9; contract unchanged)
+**Severity:** Medium   **Disposition:** ADJUDICATED (OQ9 decided: (a) soulbound-only sealing in the clients plus (d) accept and document for the contract; contract unchanged; the property is pinned by `a_frozen_transferable_pass_still_approves_for_anyone`; was MITIGATED until 2026-10-22; the live key-server confirmation stays a Section D gate)
 
 **Where:**
 
@@ -920,7 +920,7 @@ write nothing the multisig has not signed), so the cost is delay.
 - `expect_signer` in `lib.sh` is defined but not called; `publish.sh` and `transfer-authority.sh`
   repeat the logic inline.
 
-**Reason accepted:** the direct burn requires the cap's on-chain owner to equal the active address
+**Reason accepted** (confirmed 2026-10-22): the direct burn requires the cap's on-chain owner to equal the active address
 (otherwise the script switches to the unsigned multisig mode), shows the package and cap, defaults to a
 dry run and needs a typed `YES`. The mainnet burn is the multisig path, which signs with the members'
 own keys. Removing the dead helper or calling it is a hygiene change for the next script edit.
@@ -934,7 +934,7 @@ own keys. Removing the dead helper or calling it is a hygiene change for the nex
 **Issue:** until `652e7b6` the `verify` job ran `npm audit --audit-level=high`; the job now calls
 `move-ci.yml`, which has no npm steps. TS-M8 asks for the audit gate in CI and in the publish workflow.
 
-**Reason accepted:** `package.json` has no dependencies or devDependencies and the lockfile is 314
+**Reason accepted** (confirmed 2026-10-22): `package.json` has no dependencies or devDependencies and the lockfile is 314
 bytes, so there is nothing to audit; `npm ci` still runs in the publish job, and Dependabot covers npm.
 Re-add the step if a dependency is ever added.
 
@@ -1022,7 +1022,7 @@ the output. Both are pinned by the stub tests.
 | I11 | Policy semantics fixed for existing ciphertexts | `UpgradeCap` burned | testnet cap live (custody lifecycle, OQ3) | GAP (pre-mainnet, maintainer; process decided) |
 | I12 | **Arithmetic** | timelock shift over 8 bytes only | `unlock_ms_max_with_max_clock_succeeds` | HOLDS |
 | I13 | **Version gating:** every entry aborts unless `PolicyConfig.version == VERSION`; `migrate` cap-gated and forward-only; no forgeable config | `config.move`, first line of each entry | four wrong-version tests; three `migrate` tests; `upgrade.sh` requires `VERSION` > on-chain; localnet rehearsal 2026-10-18: old package aborts `E_WRONG_VERSION` after `migrate`, new one approves (F31) | HOLDS |
-| I14 | **Only the pass owner can authorise** (Seal input ownership) | Seal dry-run ownership resolution | `a_frozen_transferable_pass_still_approves_for_anyone` records the exception | HOLDS for soulbound passes; transferable passes MITIGATED (F16: client refusal, documented) |
+| I14 | **Only the pass owner can authorise** (Seal input ownership) | Seal dry-run ownership resolution | `a_frozen_transferable_pass_still_approves_for_anyone` records the exception | HOLDS for soulbound passes; transferable passes ADJUDICATED (F16: client refusal, documented, pinned by a test) |
 | I15 | **Encryption binding:** encrypt under the original id; approve at the latest published-at; `PolicyConfig` passed | seal-client `deployments.ts` (generated from this package) | seal-client provider tests; `deployments` drift check; ABI-drift integration test | HOLDS (consumer-side) |
 | I16 | **Capability binding / custody** | `PolicyAdminCap` gates `migrate`; caps to the multisig | `config_tests`; scripts verify type, package and owner; cap IDs recorded in `deployments.json` | HOLDS in code; custody execution pending (OQ3, maintainer) |
 | I17 | **Funds** | — | no coins handled | N/A |
@@ -1385,6 +1385,7 @@ TS requirements are n/a (no TypeScript).
    *(2026-10-03: yes in practice — `Move.toml` comment, README, the workspace standing rules.)*
 2. **OQ2** *(first pass — intent confirmed: membership, indefinite decryptability)* Should operators be
    offered a policy that bounds decryptions? That would need an on-chain mechanism outside the dry run.
+   *(Decided 2026-10-22: no bounded-decryption policy. Seal's dry run cannot carry state that a policy mutates, so a count or time bound cannot be enforced honestly on-chain; membership with indefinite decryptability stays the model, and the "a holder can leak plaintext" property stays documented (F12).)*
 3. **OQ3** Burn or multisig for the `UpgradeCap` — on testnet now, and at mainnet publish?
    - *(2026-09-28, owner: design as if a multisig holds authority — for now a single key. New versions
      with crucial changes stay upgradeable under that authority while being tested; once ready for
@@ -1396,9 +1397,8 @@ TS requirements are n/a (no TypeScript).
      pending and maintainer-only: `multisigAddress` and `plannedBurnDate` are `null` on testnet; the
      2026-10-09 caps are with the deploy key — `OPERATOR_TASKS.md` "Mainnet release custody".)*
 4. **OQ4** Keep `sealed_content::publish` permissionless for launch, or add a curated variant?
-   *(Open. Strings are bounded since D9.)*
-5. **OQ5** Will every client disambiguate aborts by `(module, code)? *(Open: seal-client has no abort
-   mapping today — S7.)*
+   *(Decided 2026-10-22: keep `publish` permissionless; clients filter by publisher, so a record only counts for a viewer who trusts its publisher. Strings are bounded since D9. A curated variant would be a new module and stays out of scope.)*
+5. **OQ5** Will every client disambiguate aborts by `(module, code)? *(Decided 2026-10-22: yes — clients disambiguate aborts by `(module, code)`, never by the code alone, since abort codes are only unique within a module. The implementation task S7 (an abort mapping in seal-client) stays open: seal-client has none today.)*
 6. **OQ6** Which testnet package is canonical? *(2026-09-28: settled by on-chain evidence; superseded
    since by `0x61c4aa…` and then by `0x0c8f7349…`, F8.)*
 7. **OQ7** Should pausing or freezing a gate also stop decryption?
@@ -1523,6 +1523,11 @@ TS requirements are n/a (no TypeScript).
 - 2026-10-19 — dependency-bot status checked (read-only): `.github/dependabot.yml` carries the `ignore` rules and the repository has no open Dependabot pull requests (`gh pr list`, 2026-10-19). Versions, findings and gates were not re-examined in this pass.
   - Dependabot policy encoded in .github/dependabot.yml (majors declined); open PRs merged 2026-10-19
 
+- 2026-10-22 (audit close-out) — dispositions and open questions settled; no Move or script change.
+  - **F16 MITIGATED -> ADJUDICATED:** OQ9 was decided ((a) soulbound-only sealing in the clients plus (d) accept and document for the contract); the behaviour is intended, documented (`SECURITY.md`, `docs/onchain/overview.md`) and pinned by `a_frozen_transferable_pass_still_approves_for_anyone`. Residual unchanged: the refusal is client-side, and the live key-server frozen-pass confirmation stays an open Section D gate (maintainer e2e).
+  - **Decided 2026-10-22:** OQ2 (no bounded-decryption policy), OQ4 (keep `publish` permissionless; clients filter publishers), OQ5 (clients disambiguate aborts by `(module, code)`; implementation task S7 for seal-client stays open). F32 and F33 stay ACCEPTED-RISK, reasons confirmed.
+  - Counts: **23 RESOLVED, 6 ADJUDICATED, 1 MITIGATED (F23), 2 ACCEPTED-RISK, 0 DEFERRED**; 4 Positive (36 findings). Not re-run: the Move tests and the scripts (no source change).
+
 ## Pre-save consistency checklist (this pass)
 
 - [x] Section A ↔ findings: GAP row I11 cites OQ3 (maintainer); I14 is HOLDS for soulbound and MITIGATED
@@ -1533,6 +1538,7 @@ TS requirements are n/a (no TypeScript).
 - [x] Closing structure in order: Normative / Suggestions / OQ / Risks.
 - [x] Open questions: decisions recorded in place, none deleted.
 - [x] Section D boxes ↔ dispositions: unticked items name OQ3, the operator tasks, the live key-server tests or the mainnet gate.
-- [x] Executive summary matches the current dispositions and ceiling (Medium, F16 mitigated).
+- [x] Executive summary matches the current dispositions and ceiling (Medium, F16 adjudicated 2026-10-22).
 - [x] C.1 counts re-measured 2026-10-09 (41 tests; 100% per module).
 - [x] Re-verification log entry added (2026-10-18 fix wave: F31).
+- [x] 2026-10-22 (close-out): F16 header, executive summary, Section A I14 and counts agree (ADJUDICATED); OQ2, OQ4, OQ5 carry their decisions; log entry added.
