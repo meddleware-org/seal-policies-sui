@@ -363,7 +363,7 @@ were consulted through search summaries on 2026-10-03; they were not re-fetched 
   - `timelock` 1–2;
   - `sealed_content` 1–3.
 - Clients must key on `(module, code)`; dev-guide rule 5 says so.
-- **Update:** seal-client has no abort-specific handling today, so the rule is unexercised (OQ5).
+- **Update:** seal-client 0.0.22 (local commit, 2026-10-22) maps the abort codes by `(module, code)` (`src/aborts.ts`, `classifyPolicyAbort`; S7 there), so the rule is exercised once 0.0.22 is released (OQ5).
 - The test-precision problem this overlap caused is fixed (F20).
 
 ### F4 — `sealed_content::publish` permissionless and unauthenticated
@@ -1407,7 +1407,7 @@ TS requirements are n/a (no TypeScript).
      2026-10-09 caps are with the deploy key — `OPERATOR_TASKS.md` "Mainnet release custody".)*
 4. **OQ4** Keep `sealed_content::publish` permissionless for launch, or add a curated variant?
    *(Decided 2026-10-22: keep `publish` permissionless; clients filter by publisher, so a record only counts for a viewer who trusts its publisher. Strings are bounded since D9. A curated variant would be a new module and stays out of scope.)*
-5. **OQ5** Will every client disambiguate aborts by `(module, code)? *(Decided 2026-10-22: yes — clients disambiguate aborts by `(module, code)`, never by the code alone, since abort codes are only unique within a module. The implementation task S7 (an abort mapping in seal-client) stays open: seal-client has none today.)*
+5. **OQ5** Will every client disambiguate aborts by `(module, code)? *(Decided 2026-10-22: yes — clients disambiguate aborts by `(module, code)`, never by the code alone, since abort codes are only unique within a module. The implementation task S7 (an abort mapping in seal-client) is done in seal-client 0.0.22 (local commit 2026-10-22, release pending): `classifyPolicyAbort` names `nft_gate` 4 and `config` 1 and the other codes by `(module, code)`.)*
 6. **OQ6** Which testnet package is canonical? *(2026-09-28: settled by on-chain evidence; superseded
    since by `0x61c4aa…` and then by `0x0c8f7349…`, F8.)*
 7. **OQ7** Should pausing or freezing a gate also stop decryption?
@@ -1539,6 +1539,7 @@ TS requirements are n/a (no TypeScript).
 - 2026-10-22 (fix wave) — F23 residuals fixed (docs and one test comment); no Move logic changed.
   - **F23 MITIGATED -> RESOLVED:** `SECURITY.md` scope (superseded packages unsupported), the `tests/nft_gate_tests.move` comment (OQ7), the user-guide freeze note plus dev-guide rule 7, and the README runbook rows for `upgrade.sh` and `migrate.sh` (details under F23). Section A/B script table updated.
   - **Measured:** `sui move build` clean and `sui move test` 41/41 passed (sui 1.81.0). Counts: **24 RESOLVED, 6 ADJUDICATED, 0 MITIGATED, 2 ACCEPTED-RISK, 0 DEFERRED**; 4 Positive (36 findings). No Section D box changed. The docs ship in the npm tarball (`docs/onchain/`), so the corrected guides reach npm with the next release; no version bump for docs.
+- 2026-10-22 (cross-repo note) — seal-client 0.0.22 (local commit, not released) implements the OQ5 abort mapping (`src/aborts.ts`; its audit S7); F3 and OQ5 text updated. No disposition changes.
 
 ## Pre-save consistency checklist (this pass)
 
