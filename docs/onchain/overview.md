@@ -9,7 +9,7 @@ title: Sealed Storage policies — on-chain overview
 Seal **identity**, stored (as ciphertext) on Walrus, and can only be decrypted when a committee of
 independent key servers agrees to release key shares. A key server releases its share only if a
 policy function in this package — `seal_approve*` — **succeeds in a dry run** with the requester as
-the sender. The client half is `@meddleware/seal-client`; each module here mirrors one client
+the sender. The client half is `@meddleware/sealed-storage-client`; each module here mirrors one client
 provider.
 
 ## Modules

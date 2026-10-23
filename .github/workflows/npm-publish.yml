@@ -19,7 +19,7 @@ jobs:
     uses: ./.github/workflows/move-ci.yml
 
   publish-npm:
-    name: npmjs (@meddleware/seal-policies-sui)
+    name: npmjs (@meddleware/sealed-storage-sui)
     needs: verify
     runs-on: ubuntu-latest
     permissions:

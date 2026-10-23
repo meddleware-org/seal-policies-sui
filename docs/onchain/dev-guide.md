@@ -6,7 +6,7 @@ title: Sealed Storage policies — developer integration
 
 How to encrypt under these policies, build the approve transaction for Seal key servers, discover
 content, and add a new policy. The full on-chain surface is in the [API reference](api-reference.md).
-The TypeScript side is `@meddleware/seal-client` (policy registry + `SealController`).
+The TypeScript side is `@meddleware/sealed-storage-client` (policy registry + `SealController`).
 
 ## Normative integration rules
 
@@ -14,8 +14,8 @@ The TypeScript side is `@meddleware/seal-client` (policy registry + `SealControl
    - `nft_gate`: `[32-byte gate object id][nonce]` — the gate id is the canonical 32-byte
      big-endian address (`0x123` → 30 zero bytes, `0x01`, `0x23`).
    - `timelock`: `[8-byte big-endian u64 unlock_ms][nonce]`.
-   Use `seal-client`'s `bytes.ts` helpers; do not hand-roll encoders. Both repos assert the same
-   conformance vector (`seal-client/tests/conformance-vectors.json` ↔ the `conformance_*` Move
+   Use `sealed-storage-client`'s `bytes.ts` helpers; do not hand-roll encoders. Both repos assert the same
+   conformance vector (`sealed-storage-client/tests/conformance-vectors.json` ↔ the `conformance_*` Move
    tests) — a layout change MUST update both sides together.
 2. **Persist the identity verbatim.** The Seal identity (hex) is part of the ciphertext's
    `SealedManifest`; it cannot be recomputed because it contains a random nonce.
@@ -33,7 +33,7 @@ The TypeScript side is `@meddleware/seal-client` (policy registry + `SealControl
    operator unpauses, rather than reporting a missing or invalid pass.
 7. **Seal to soulbound gates.** The holder of a transferable `AccessNFT` can freeze or share it
    (`public_freeze_object`), after which anyone can present it and the policy approves, for all content of that
-   gate. Content that must stay private to its buyers belongs on a soulbound gate; `seal-client` refuses to
+   gate. Content that must stay private to its buyers belongs on a soulbound gate; `sealed-storage-client` refuses to
    seal to a transferable gate unless `allowTransferableGates: true`.
 
 ## The approve PTB (what the key server dry-runs)
@@ -67,7 +67,7 @@ Each carries `blob_id` (Walrus ciphertext), `seal_id` (identity hex), `label` an
 ## Adding a policy
 
 A new policy is a **new module** with its own `seal_approve*` entry function — existing modules are
-never edited — plus one new provider in `seal-client` whose `buildId`/`buildApprove` mirror it and whose
+never edited — plus one new provider in `sealed-storage-client` whose `buildId`/`buildApprove` mirror it and whose
 `verifyId` checks the identity layout (required; `decrypt` calls it before every approve).
 A policy function MUST take `&PolicyConfig` second and call `config::check_version` first, MUST take
 only immutable references, MUST NOT transfer, create, mutate or emit anything, and MUST length-check

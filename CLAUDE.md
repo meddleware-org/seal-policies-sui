@@ -6,7 +6,7 @@ The **on-chain half of Sealed Storage**: modular [Seal](https://seal-docs.wal.ap
 policies for Sui. A Seal key server releases a decryption key share only if an on-chain
 `seal_approve*` function runs without aborting (evaluated via `dry_run_transaction_block` under the
 requester's address). Its client counterpart is
-[`@meddleware/seal-client`](https://github.com/meddleware-org/seal-client) — each Move module here
+[`@meddleware/sealed-storage-client`](https://github.com/meddleware-org/sealed-storage-client) — each Move module here
 mirrors one client provider 1:1.
 
 ## Architectural invariants
@@ -26,7 +26,7 @@ mirrors one client provider 1:1.
 - **Identity is namespaced, and the layout must match the client bit-for-bit.** `nft_gate` asserts
   the identity's first 32 bytes equal the gate object id (a pass for gate A cannot decrypt gate B's
   content); `timelock` decodes `[8-byte BE unlock_ms][nonce]`. These layouts are the mirror of
-  `seal-client`'s `bytes.ts`/providers — never change one side alone.
+  `sealed-storage-client`'s `bytes.ts`/providers — never change one side alone.
 - **Ownership is enforced by Seal, not re-implemented here.** The key server dry-runs under the
   requester's address, so a non-owned object fails input resolution before `seal_approve` logic runs.
 - **`nft_gate` reuses `access_gate` unmodified.** It depends on the `access_gate` primitive (via
@@ -36,7 +36,7 @@ mirrors one client provider 1:1.
   immutable **commit SHA** — never a mutable tag, and always the access-gate commit that records the
   `access_gate` publication this package links against. See the Move.toml comment and README.
 - **`sealed_content::publish` bounds its strings** (`label` ≤ 256, `blob_id` ≤ 128, `seal_id` ≤ 256
-  bytes; abort codes 1–3). `@meddleware/seal-client` mirrors the limits (`SEALED_CONTENT_LIMITS`) —
+  bytes; abort codes 1–3). `@meddleware/sealed-storage-client` mirrors the limits (`SEALED_CONTENT_LIMITS`) —
   change both together.
 - **Pause may block decryption, per gate.** `nft_gate` aborts `E_GATE_PAUSED = 4` only when the
   gate's `GatePolicy.pause_blocks_decryption` is set and the gate is paused; otherwise a paused
@@ -60,7 +60,7 @@ The full module/identity/roadmap tables live in [README.md](README.md) — keep 
 
 - Do not add side effects to any `seal_approve*` (it is dry-run only).
 - Do not edit an existing policy module to add a new policy — write a new module.
-- Do not change an identity layout without changing the matching `seal-client` provider.
+- Do not change an identity layout without changing the matching `sealed-storage-client` provider.
 - Do not modify `access_gate` from here; `nft_gate`/`sealed_content` are strictly additive.
 
 ---

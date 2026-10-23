@@ -75,7 +75,7 @@ Abort codes are per module: a client distinguishes `config` 1 from `nft_gate` 1 
 
 ## Identity layouts (conformance)
 
-| Policy | Layout | Vector (shared with `seal-client`) |
+| Policy | Layout | Vector (shared with `sealed-storage-client`) |
 | --- | --- | --- |
 | `nft_gate` | `[32-byte gate id][nonce]` | gate `0x123` → prefix `00…0123` (32 bytes) |
 | `timelock` | `[8-byte BE unlock_ms][nonce]` | `1704067200000` → `00 00 01 8c c2 51 f4 00` |

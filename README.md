@@ -91,7 +91,7 @@ Superseded: `0x61c4aaa4…7e42` (linked `access_gate` `0xa55789…`; before the 
 `0x1a81ca…`; predates version gating) and `0x9f0563bf…231e` (linked the pre-policy `access_gate` `0x0bedd0…`; UpgradeCap burned).
 Strays `0x67520f80…88d3` and `0x882fcc68…e8cc` bundle their own copy of the `access_gate` module, so
 their `nft_gate` can never accept a real gate's pass; their UpgradeCaps are burned (see
-[the audit](docs/audit/seal-policies-sui-audit.md), F8).
+[the audit](docs/audit/sealed-storage-sui-audit.md), F8).
 
 ## Dependency on `access-gate-sui`
 
@@ -114,7 +114,7 @@ resolves to, and re-publish if that address changes; after changing it, regenera
 `scripts/publish.sh <localnet|testnet|mainnet>` publishes a fresh package and records the package,
 `UpgradeCap`, `PolicyAdminCap` and `PolicyConfig` in `.env.<network>` (gitignored), and the
 `PolicyConfig` id with the custody record in `deployments.json` (committed, shipped in the npm package
-for `@meddleware/seal-client`). Sui writes `Published.toml`. Commit both files after every publish.
+for `@meddleware/sealed-storage-client`). Sui writes `Published.toml`. Commit both files after every publish.
 
 ## Custody and operations runbook
 

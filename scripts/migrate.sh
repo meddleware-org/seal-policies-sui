@@ -46,9 +46,9 @@ if [ -n "$VERIFY" ]; then
   log "OK    PolicyConfig $POLICY_CONFIG_ID is at version $CHAIN_VERSION = VERSION; package $PACKAGE_ID is the latest."
   log ""
   log "Consumer release steps (the new published-at changes; original-id and policyConfigId do not):"
-  log "  1. commit Published.toml / deployments.json and release @meddleware/seal-policies-sui;"
-  log "  2. regenerate @meddleware/seal-client deployments (npm run gen:deployments), release it;"
-  log "  3. bump seal-ui and the dashboard; the indexer needs no change (it matches the original id)."
+  log "  1. commit Published.toml / deployments.json and release @meddleware/sealed-storage-sui;"
+  log "  2. regenerate @meddleware/sealed-storage-client deployments (npm run gen:deployments), release it;"
+  log "  3. bump sealed-storage-ui and the dashboard; the indexer needs no change (it matches the original id)."
   exit 0
 fi
 

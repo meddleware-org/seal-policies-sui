@@ -21,7 +21,7 @@ It does not cover:
   [Seal project](https://seal-docs.wal.app/)) — the committee enforces object ownership via
   `dry_run` under the requester's address *before* policy logic runs; policies are a second gate
 - The `access-gate-sui` package it depends on (see that repo's `SECURITY.md`)
-- The client-side identity encoder `@meddleware/seal-client` (`bytes.ts`) — the byte layouts here
+- The client-side identity encoder `@meddleware/sealed-storage-client` (`bytes.ts`) — the byte layouts here
   and there must match bit-for-bit; a client-only drift is reported against that package
 - Custody of the `UpgradeCap` and `PolicyAdminCap` (the multisig process in `CUSTODY.md`), and the custody
   scripts themselves (`publish.sh`, `transfer-authority.sh`, `upgrade.sh`, `migrate.sh`, `make-immutable.sh`)
@@ -52,7 +52,7 @@ Known, intentional properties (not vulnerabilities):
   `public_freeze_object` or share it; a frozen pass is an immutable object anyone can present, and
   `nft_gate::seal_approve` approves it (tested: `a_frozen_transferable_pass_still_approves_for_anyone`). Only
   a soulbound pass (`SoulboundAccessNFT`, no `store`) cannot be frozen or shared by its holder. **Gates
-  used for Sealed Storage should be soulbound**; `@meddleware/seal-client` refuses to seal to a transferable
+  used for Sealed Storage should be soulbound**; `@meddleware/sealed-storage-client` refuses to seal to a transferable
   gate unless asked to.
 - **Content sealed under a superseded package is unsupported.** Each `seal_policies` original id is its own Seal
   namespace; the clients serve the current one only.

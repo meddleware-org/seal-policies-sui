@@ -1,18 +1,18 @@
 {
-  "name": "@meddleware/seal-policies-sui",
-  "version": "0.0.8",
+  "name": "@meddleware/sealed-storage-sui",
+  "version": "0.0.9",
   "private": false,
   "type": "module",
   "author": "MeddleWare <dev@meddleware.co.uk>",
   "license": "0BSD",
   "description": "Modular Seal access-control policies for Sui (Move source, canonical on-chain docs, and audit). Consumed by the docs./dev. sites at build time.",
-  "homepage": "https://github.com/meddleware-org/seal-policies-sui#readme",
+  "homepage": "https://github.com/meddleware-org/sealed-storage-sui#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/meddleware-org/seal-policies-sui.git"
+    "url": "git+https://github.com/meddleware-org/sealed-storage-sui.git"
   },
   "bugs": {
-    "url": "https://github.com/meddleware-org/seal-policies-sui/issues"
+    "url": "https://github.com/meddleware-org/sealed-storage-sui/issues"
   },
   "publishConfig": {
     "access": "public"

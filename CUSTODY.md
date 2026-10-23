@@ -71,7 +71,7 @@ Scripts do the checking and the unsigned transactions; the multisig signs (see t
 4. `NETWORK=<network> bash scripts/migrate.sh --verify` checks that the `PolicyConfig` names `VERSION`, that the
    recorded package is the one the `UpgradeCap` names (once the cap is burned: a note), that it has the expected
    modules and no bundled `access_gate`, and prints the consumer steps.
-5. Release the npm package and `@meddleware/seal-client` with the new `published-at`. Identities stay
+5. Release the npm package and `@meddleware/sealed-storage-client` with the new `published-at`. Identities stay
    under the original id, so sealed content needs no re-sealing.
 
 ## Coupled releases (`access_gate`)
