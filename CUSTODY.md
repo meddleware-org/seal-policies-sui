@@ -1,4 +1,4 @@
-# Custody — seal_policies
+# Custody — sealed_storage
 
 Who holds this package's authority objects, and how that changes over a release. The scripts named
 here all run the same preflight (active env, chain identifier, CLI version, `MAINNET_CONFIRM=1` on
@@ -80,9 +80,9 @@ Scripts do the checking and the unsigned transactions; the multisig signs (see t
 gate does not cover views.
 
 - **`access_gate` upgrade** that changes a view's semantics (`is_valid_for*`, `uses_remaining*`,
-  `gate_is_paused`, `gate_pause_blocks_decryption`): decide whether `seal_policies` must be upgraded to re-link,
+  `gate_is_paused`, `gate_pause_blocks_decryption`): decide whether `sealed_storage` must be upgraded to re-link,
   and do so in the same window.
-- **`access_gate` republish** (a new original id): the new gates are different types. Publish `seal_policies`
+- **`access_gate` republish** (a new original id): the new gates are different types. Publish `sealed_storage`
   against it (Move.toml pins the access-gate commit that records that publication; `publish.sh` checks the
   linkage) and re-seal content; the old package keeps working only for content already sealed to the old gates.
 

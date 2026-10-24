@@ -28,10 +28,10 @@
 ///
 /// Version gating: both entries take the shared `config::PolicyConfig` and abort with
 /// `config::E_WRONG_VERSION` under any other package version.
-module seal_policies::nft_gate;
+module sealed_storage::nft_gate;
 
 use access_gate::access_gate::{Self, Gate, AccessNFT, SoulboundAccessNFT};
-use seal_policies::config::{Self, PolicyConfig};
+use sealed_storage::config::{Self, PolicyConfig};
 
 /// Identity is not namespaced to this gate (its first 32 bytes must equal the gate object id).
 const E_ID_NOT_NAMESPACED: u64 = 1;

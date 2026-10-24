@@ -1579,3 +1579,4 @@ TS requirements are n/a (no TypeScript).
 - [x] 2026-10-22 (close-out): F16 header, executive summary, Section A I14 and counts agree (ADJUDICATED); OQ2, OQ4, OQ5 carry their decisions; log entry added.
 - [x] 2026-10-22 (live tests): F37 added (RESOLVED); the live key-server Section D box and four C.2 rows updated with digests; counts 37 findings (RESOLVED 25); log entry added.
 - 2026-10-24 — repository renamed from `seal-policies-sui` to `sealed-storage-sui` (workspace naming convention, `docs/architecture/ADR-0003-naming.md`): package, image, host and path names updated throughout. No finding, disposition or evidence changed.
+- 2026-10-24 — identifier alignment (`docs/architecture/ADR-0004-identifier-alignment.md`): Move package and alias `sealed_storage` (was `seal_policies`); modules compile byte-identical (Sui 1.81.0), so ids, identities and the upgrade path are unchanged; 41 Move tests pass. Module names (incl. `nft_gate`) kept on purpose.

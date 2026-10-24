@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Burn the seal_policies UpgradeCap, making the published package PERMANENTLY IMMUTABLE.
+# Burn the sealed_storage UpgradeCap, making the published package PERMANENTLY IMMUTABLE.
 #
 # Why: while the cap exists, an upgrade can change `seal_approve*` and so retroactively de-gate (or
 # re-gate) every ciphertext sealed under this package. Burning it fixes the policies for good.
@@ -31,7 +31,7 @@ DRY_RUN="${DRY_RUN:-1}"
 GAS_BUDGET="${GAS_BUDGET:-100000000}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PUBLISHED_TOML="$REPO_ROOT/Published.toml"
-PACKAGE_LABEL="seal_policies"
+PACKAGE_LABEL="sealed_storage"
 OUT_DIR="${OUT_DIR:-$REPO_ROOT/custody-out}"
 UPGRADE_CAP_TYPE="0x0000000000000000000000000000000000000000000000000000000000000002::package::UpgradeCap"
 

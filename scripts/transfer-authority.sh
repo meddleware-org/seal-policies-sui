@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Transfer seal_policies authority from the deploy key to the custody multisig (CUSTODY.md step 2).
+# Transfer sealed_storage authority from the deploy key to the custody multisig (CUSTODY.md step 2).
 #
 # Objects:
 #   - PolicyAdminCap  — authorises config::migrate (always transferred)
@@ -82,7 +82,7 @@ POLICY_ADMIN_CAP_ID="${POLICY_ADMIN_CAP_ID:-$(jq -r --arg n "$NETWORK" '.[$n].po
 POLICY_ADMIN_CAP_ID="${POLICY_ADMIN_CAP_ID:-$(record SEAL_POLICIES_POLICY_ADMIN_CAP_ID)}"
 UPGRADE_CAP_ID="${UPGRADE_CAP_ID:-$(record SEAL_POLICIES_UPGRADE_CAP_ID)}"
 UPGRADE_CAP_ID="${UPGRADE_CAP_ID:-$(published_field upgrade-capability)}"
-[ -n "$PACKAGE_ID" ] || { log "ERROR: cannot determine the seal_policies package id (PACKAGE_ID, .env.$NETWORK or Published.toml)."; exit 1; }
+[ -n "$PACKAGE_ID" ] || { log "ERROR: cannot determine the sealed_storage package id (PACKAGE_ID, .env.$NETWORK or Published.toml)."; exit 1; }
 [ -n "$POLICY_ADMIN_CAP_ID" ] || { log "ERROR: POLICY_ADMIN_CAP_ID not set and not in .env.$NETWORK."; exit 1; }
 
 preflight
@@ -106,7 +106,7 @@ verify_object() {
   [ "$(long_addr "$owner")" = "$(long_addr "$ACTIVE")" ] || { log "ERROR: $label $id is owned by '${owner:-<not address-owned>}', not the active address."; exit 1; }
   if [ -n "$pkg" ]; then
     [ "$(long_addr "$(jq -r '.content.package // empty' <<<"$json")")" = "$(long_addr "$pkg")" ] \
-      || { log "ERROR: $label $id does not belong to seal_policies $pkg."; exit 1; }
+      || { log "ERROR: $label $id does not belong to sealed_storage $pkg."; exit 1; }
   fi
   log "Verified     : $label $id"
 }

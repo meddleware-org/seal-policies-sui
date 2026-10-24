@@ -2,10 +2,10 @@
 
 // Abort codes by literal (see timelock.move): E_BAD_ID = 1, E_TOO_EARLY = 2.
 #[test_only]
-module seal_policies::timelock_tests;
+module sealed_storage::timelock_tests;
 
-use seal_policies::config;
-use seal_policies::timelock;
+use sealed_storage::config;
+use sealed_storage::timelock;
 use sui::clock::{Self, Clock};
 use sui::test_scenario as ts;
 
@@ -42,7 +42,7 @@ fun after_unlock_succeeds() {
 }
 
 #[test]
-#[expected_failure(abort_code = 2, location = seal_policies::timelock)] // E_TOO_EARLY
+#[expected_failure(abort_code = 2, location = sealed_storage::timelock)] // E_TOO_EARLY
 fun before_unlock_aborts() {
     let mut s = ts::begin(U);
     let mut c = clock::create_for_testing(s.ctx());
@@ -75,7 +75,7 @@ fun conformance_unlock_ms_big_endian_matches_vector() {
 }
 
 #[test]
-#[expected_failure(abort_code = 1, location = seal_policies::timelock)] // E_BAD_ID
+#[expected_failure(abort_code = 1, location = sealed_storage::timelock)] // E_BAD_ID
 fun short_id_aborts() {
     let mut s = ts::begin(U);
     let c = clock::create_for_testing(s.ctx());
@@ -123,7 +123,7 @@ fun exact_8_byte_id_succeeds() {
 }
 
 #[test]
-#[expected_failure(abort_code = 1, location = seal_policies::config)] // E_WRONG_VERSION
+#[expected_failure(abort_code = 1, location = sealed_storage::config)] // E_WRONG_VERSION
 fun wrong_version_blocks_timelock() {
     let mut s = ts::begin(U);
     let mut c = clock::create_for_testing(s.ctx());

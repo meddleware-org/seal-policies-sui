@@ -54,11 +54,11 @@ Known, intentional properties (not vulnerabilities):
   a soulbound pass (`SoulboundAccessNFT`, no `store`) cannot be frozen or shared by its holder. **Gates
   used for Sealed Storage should be soulbound**; `@meddleware/sealed-storage-client` refuses to seal to a transferable
   gate unless asked to.
-- **Content sealed under a superseded package is unsupported.** Each `seal_policies` original id is its own Seal
+- **Content sealed under a superseded package is unsupported.** Each `sealed_storage` original id is its own Seal
   namespace; the clients serve the current one only.
 - **Coupled releases.** `nft_gate` reads `access_gate` through its linkage: an `access_gate` *upgrade* that
   changes a view does not reach `nft_gate` until this package is upgraded with the new linkage, and an
-  `access_gate` *republish* makes the new gates incompatible types, so `seal_policies` is republished against
+  `access_gate` *republish* makes the new gates incompatible types, so `sealed_storage` is republished against
   it (CUSTODY.md, "Coupled releases").
 - **Timelock depends on each key server's clock.** Servers dry-run against their own full node's `Clock`, so
   the unlock instant is approximate (seconds) and servers may briefly disagree around it; there is no upper

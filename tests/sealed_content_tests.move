@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: 0BSD
 
 #[test_only]
-module seal_policies::sealed_content_tests;
+module sealed_storage::sealed_content_tests;
 
-use seal_policies::config;
+use sealed_storage::config;
 use std::string::String;
-use seal_policies::sealed_content::{Self, SealedContent};
+use sealed_storage::sealed_content::{Self, SealedContent};
 use sui::test_scenario as ts;
 
 const PUBLISHER: address = @0xC0;
@@ -111,7 +111,7 @@ fun rejects_a_seal_id_over_the_limit() {
 }
 
 #[test]
-#[expected_failure(abort_code = 1, location = seal_policies::config)] // E_WRONG_VERSION
+#[expected_failure(abort_code = 1, location = sealed_storage::config)] // E_WRONG_VERSION
 fun wrong_version_blocks_publish() {
     let mut s = ts::begin(PUBLISHER);
     let mut policy = config::new_for_testing(s.ctx());

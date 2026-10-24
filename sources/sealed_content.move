@@ -11,9 +11,9 @@
 ///
 /// Discovery: index `SealedContentPublished` by `gate_id`, or enumerate the shared
 /// `SealedContent` objects.
-module seal_policies::sealed_content;
+module sealed_storage::sealed_content;
 
-use seal_policies::config::{Self, PolicyConfig};
+use sealed_storage::config::{Self, PolicyConfig};
 use std::string::String;
 use sui::event;
 

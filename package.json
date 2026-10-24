@@ -1,6 +1,6 @@
 {
   "name": "@meddleware/sealed-storage-sui",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "private": false,
   "type": "module",
   "author": "MeddleWare <dev@meddleware.co.uk>",

@@ -4,7 +4,7 @@ title: Sealed Storage policies — on-chain overview
 
 # Sealed Storage policies — on-chain overview
 
-`seal_policies` is the on-chain half of **Sealed Storage**: access-control policies for
+`sealed_storage` is the on-chain half of **Sealed Storage**: access-control policies for
 [Seal](https://seal-docs.wal.app/) threshold encryption. Content is encrypted in the browser under a
 Seal **identity**, stored (as ciphertext) on Walrus, and can only be decrypted when a committee of
 independent key servers agrees to release key shares. A key server releases its share only if a
@@ -36,6 +36,6 @@ provider.
 
 Testnet package: `0x0c8f73490b14836e6a7a724fb46b242cb061d04a5f193fd637159997f8a1773d` (used by
 Sealed Storage; `PolicyConfig` `0xee0403ba15c250223527150d147f29bedfb1ec46bb2282c341be462ff0ad7d1a`). It depends on the access-gate package `0xd7ddaa94…`. Content
-sealed under a superseded `seal_policies` package (an earlier original id) is **not supported**: the Meddleware clients serve one policy namespace, and the manifest records none. Pre-v0.2 packages are republished rather than migrated, so re-seal content when the package changes. Mainnet: not yet published.
+sealed under a superseded `sealed_storage` package (an earlier original id) is **not supported**: the Meddleware clients serve one policy namespace, and the manifest records none. Pre-v0.2 packages are republished rather than migrated, so re-seal content when the package changes. Mainnet: not yet published.
 
 A transferable pass (`AccessNFT` has `store`) can be frozen or shared by its holder, after which anyone can present it and the policy approves: **gates used for Sealed Storage should be soulbound**. A gate whose pause blocks decryption can never be frozen while paused, so pausing and then freezing cannot make its content permanently undecryptable.

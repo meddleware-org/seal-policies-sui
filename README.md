@@ -1,4 +1,4 @@
-# seal_policies
+# sealed_storage
 
 Modular [Seal](https://seal-docs.wal.app/) access-control policies for Sui — the on-chain half of
 Meddleware **Sealed Storage** (client-side encrypted, access-gated Walrus storage).
@@ -105,7 +105,7 @@ access_gate = { git = "https://github.com/meddleware-org/access-gate-sui.git", r
 ```
 
 That commit records the testnet publication of `access_gate` `0xd7ddaa94…` (its `Published.toml`), which
-the published `seal_policies` links against. Change the rev only together with the address it
+the published `sealed_storage` links against. Change the rev only together with the address it
 resolves to, and re-publish if that address changes; after changing it, regenerate `Move.lock`
 (`sui move build --build-env testnet`) and commit it.
 
@@ -133,7 +133,7 @@ UpgradeCap on the planned date. Every script runs the same preflight as `access-
 | `scripts/migrate.sh [--verify]` | Move the `PolicyConfig` to the new `VERSION` in a separate transaction run immediately after the upgrade (`PolicyAdminCap`-gated); `--verify` checks the result | `NETWORK=<net> MULTISIG_ADDRESS=0x… bash scripts/migrate.sh` | as `CUSTODY.md` describes | Run it right away: until it does, the older version keeps approving (the version gate retires it); `--verify` is read-only |
 | `scripts/multisig-address.sh` | Derive the custody multisig address | `MULTISIG_PKS=… MULTISIG_WEIGHTS=… MULTISIG_THRESHOLD=… bash scripts/multisig-address.sh` | — (read-only) | — |
 
-Until the UpgradeCap is burned, its holder can upgrade `seal_policies` and thereby change who can
+Until the UpgradeCap is burned, its holder can upgrade `sealed_storage` and thereby change who can
 decrypt existing ciphertexts (the Seal identity namespace is the package).
 
 ## License

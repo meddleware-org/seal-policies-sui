@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prepare an UPGRADE of the published seal_policies package for the custody multisig (CUSTODY.md,
+# Prepare an UPGRADE of the published sealed_storage package for the custody multisig (CUSTODY.md,
 # "Upgrading during the verification window"). Nothing is signed or executed here: the script checks
 # everything it can, then writes the unsigned upgrade transaction (sender = the multisig).
 #

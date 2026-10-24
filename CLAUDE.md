@@ -1,4 +1,4 @@
-# CLAUDE.md — seal_policies (Move)
+# CLAUDE.md — sealed_storage (Move)
 
 ## What this package is
 
@@ -85,5 +85,5 @@ The full module/identity/roadmap tables live in [README.md](README.md) — keep 
 
 ### White-label (to write later)
 
-- Operators publishing their **own `seal_policies`** (own package id + key-server committee) and
+- Operators publishing their **own `sealed_storage`** (own package id + key-server committee) and
   choosing which policy modules to ship; how that maps to the client's provider set.

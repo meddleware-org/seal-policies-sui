@@ -2,9 +2,9 @@
 
 // Abort codes by literal (see config.move): E_WRONG_VERSION = 1, E_NOT_UPGRADE = 2.
 #[test_only]
-module seal_policies::config_tests;
+module sealed_storage::config_tests;
 
-use seal_policies::config::{Self, PolicyConfig, PolicyAdminCap};
+use sealed_storage::config::{Self, PolicyConfig, PolicyAdminCap};
 use sui::test_scenario as ts;
 
 const ADMIN: address = @0xA1;
@@ -41,7 +41,7 @@ fun migrate_moves_an_older_config_forward() {
 }
 
 #[test]
-#[expected_failure(abort_code = 2, location = seal_policies::config)] // E_NOT_UPGRADE
+#[expected_failure(abort_code = 2, location = sealed_storage::config)] // E_NOT_UPGRADE
 fun migrate_at_current_version_aborts() {
     let mut s = ts::begin(ADMIN);
     config::init_for_testing(s.ctx());
@@ -55,7 +55,7 @@ fun migrate_at_current_version_aborts() {
 }
 
 #[test]
-#[expected_failure(abort_code = 2, location = seal_policies::config)] // E_NOT_UPGRADE
+#[expected_failure(abort_code = 2, location = sealed_storage::config)] // E_NOT_UPGRADE
 fun migrate_never_moves_backwards() {
     let mut s = ts::begin(ADMIN);
     config::init_for_testing(s.ctx());

@@ -1,6 +1,6 @@
 [package]
 edition = "2024"
-name = "seal_policies"
+name = "sealed_storage"
 version = "0.0.8"
 license = "0BSD"
 # No `published-at`: the testnet publication (version-gated, linking access_gate 0xd7ddaa94…88c9) is

@@ -8,7 +8,7 @@
 /// bumps `VERSION`; the `PolicyAdminCap` holder then calls `migrate`, which retires every older
 /// version at once (Sui upgrade guide: versioned shared objects; Seal: `seal_approve*` as non-public
 /// `entry` functions).
-module seal_policies::config;
+module sealed_storage::config;
 
 use sui::event;
 

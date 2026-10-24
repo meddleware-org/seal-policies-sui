@@ -7,9 +7,9 @@
 /// NOTHING with `nft_gate` (no gate, no NFT, different argument shape) — it exists to keep the
 /// policy abstraction honest: adding a policy type is a new module, not a change to existing
 /// ones, and nothing privileges the NFT-gate case.
-module seal_policies::timelock;
+module sealed_storage::timelock;
 
-use seal_policies::config::{Self, PolicyConfig};
+use sealed_storage::config::{Self, PolicyConfig};
 use sui::clock::Clock;
 
 /// Identity too short to carry an 8-byte unlock timestamp.

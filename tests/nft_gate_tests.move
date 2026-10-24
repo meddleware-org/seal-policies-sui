@@ -6,11 +6,11 @@
 // Every such test names its `location`: the same small codes exist in `config`, `timelock` and `access_gate`,
 // and a location-less test passes on ANY abort with that code.
 #[test_only]
-module seal_policies::nft_gate_tests;
+module sealed_storage::nft_gate_tests;
 
 use access_gate::access_gate::{Self, Gate, AdminCap, AccessNFT, SoulboundAccessNFT, GatePolicy, PlatformConfig};
-use seal_policies::config;
-use seal_policies::nft_gate;
+use sealed_storage::config;
+use sealed_storage::nft_gate;
 use sui::coin;
 use sui::sui::SUI;
 use sui::test_scenario as ts;
@@ -165,7 +165,7 @@ fun conformance_gate_id_prefix_layout() {
 }
 
 #[test]
-#[expected_failure(abort_code = 2, location = seal_policies::nft_gate)] // E_WRONG_GATE
+#[expected_failure(abort_code = 2, location = sealed_storage::nft_gate)] // E_WRONG_GATE
 fun approve_with_foreign_nft_aborts() {
     let mut s = ts::begin(CREATOR);
     make_gate(&mut s, false, 0); // gate A
@@ -202,7 +202,7 @@ fun approve_with_foreign_nft_aborts() {
 }
 
 #[test]
-#[expected_failure(abort_code = 1, location = seal_policies::nft_gate)] // E_ID_NOT_NAMESPACED
+#[expected_failure(abort_code = 1, location = sealed_storage::nft_gate)] // E_ID_NOT_NAMESPACED
 fun approve_with_wrong_namespace_aborts() {
     let mut s = ts::begin(CREATOR);
     make_gate(&mut s, false, 0);
@@ -252,7 +252,7 @@ fun approve_with_exact_32_byte_id_succeeds() {
 // Boundary: an id shorter than 32 bytes aborts with E_ID_NOT_NAMESPACED immediately
 // (does not read past bounds or produce a silent gate-mismatch).
 #[test]
-#[expected_failure(abort_code = 1, location = seal_policies::nft_gate)] // E_ID_NOT_NAMESPACED
+#[expected_failure(abort_code = 1, location = sealed_storage::nft_gate)] // E_ID_NOT_NAMESPACED
 fun approve_with_7_byte_id_aborts() {
     let mut s = ts::begin(CREATOR);
     make_gate(&mut s, false, 0);
@@ -273,7 +273,7 @@ fun approve_with_7_byte_id_aborts() {
 }
 
 #[test]
-#[expected_failure(abort_code = 3, location = seal_policies::nft_gate)] // E_EXHAUSTED
+#[expected_failure(abort_code = 3, location = sealed_storage::nft_gate)] // E_EXHAUSTED
 fun approve_with_exhausted_pass_aborts() {
     let mut s = ts::begin(CREATOR);
     make_gate(&mut s, false, 1); // single-use, 1 use, auto_burn = false → returns 0-use receipt
@@ -299,7 +299,7 @@ fun approve_with_exhausted_pass_aborts() {
 // ── Soulbound variants of the abort paths ────────────────────────────────────────
 
 #[test]
-#[expected_failure(abort_code = 2, location = seal_policies::nft_gate)] // E_WRONG_GATE
+#[expected_failure(abort_code = 2, location = sealed_storage::nft_gate)] // E_WRONG_GATE
 fun approve_soulbound_with_foreign_nft_aborts() {
     let mut s = ts::begin(CREATOR);
     make_gate(&mut s, true, 0);
@@ -322,7 +322,7 @@ fun approve_soulbound_with_foreign_nft_aborts() {
 }
 
 #[test]
-#[expected_failure(abort_code = 3, location = seal_policies::nft_gate)] // E_EXHAUSTED
+#[expected_failure(abort_code = 3, location = sealed_storage::nft_gate)] // E_EXHAUSTED
 fun approve_soulbound_with_exhausted_pass_aborts() {
     let mut s = ts::begin(CREATOR);
     make_gate(&mut s, true, 1);
@@ -409,7 +409,7 @@ fun approve_while_paused(pause_blocks_decryption: bool) {
 }
 
 #[test]
-#[expected_failure(abort_code = 4, location = seal_policies::nft_gate)] // E_GATE_PAUSED
+#[expected_failure(abort_code = 4, location = sealed_storage::nft_gate)] // E_GATE_PAUSED
 fun approve_denied_while_paused_when_policy_blocks_decryption() {
     approve_while_paused(true);
 }
@@ -447,7 +447,7 @@ fun pause(s: &mut ts::Scenario, cap: &AdminCap, gate: &mut Gate) {
 
 // Check order: a paused policy gate presented with a foreign pass aborts E_GATE_PAUSED (4), not E_WRONG_GATE (2).
 #[test]
-#[expected_failure(abort_code = 4, location = seal_policies::nft_gate)] // E_GATE_PAUSED, before the pass is checked
+#[expected_failure(abort_code = 4, location = sealed_storage::nft_gate)] // E_GATE_PAUSED, before the pass is checked
 fun paused_policy_gate_with_foreign_pass_aborts_paused_first() {
     let mut s = ts::begin(CREATOR);
     make_gate(&mut s, false, 0); // gate A: the pass comes from here
@@ -579,13 +579,13 @@ fun approve_at_current_version_succeeds() {
 }
 
 #[test]
-#[expected_failure(abort_code = 1, location = seal_policies::config)] // E_WRONG_VERSION
+#[expected_failure(abort_code = 1, location = sealed_storage::config)] // E_WRONG_VERSION
 fun wrong_version_blocks_seal_approve() {
     approve_at_version(false, config::package_version() + 1);
 }
 
 #[test]
-#[expected_failure(abort_code = 1, location = seal_policies::config)] // E_WRONG_VERSION
+#[expected_failure(abort_code = 1, location = sealed_storage::config)] // E_WRONG_VERSION
 fun wrong_version_blocks_seal_approve_soulbound() {
     approve_at_version(true, 0);
 }

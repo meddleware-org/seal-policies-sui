@@ -4,12 +4,12 @@ title: Sealed Storage policies — on-chain API reference
 
 # Sealed Storage policies — on-chain API reference
 
-Package `seal_policies` (Move 2024), testnet `0x0c8f7349…773d`. Depends on `access_gate` `0xd7ddaa94…`
+Package `sealed_storage` (Move 2024), testnet `0x0c8f7349…773d`. Depends on `access_gate` `0xd7ddaa94…`
 (git dependency pinned to a commit SHA). `config::init` shares one `PolicyConfig` and gives the
 `PolicyAdminCap` to the publisher; every entry below takes `policy: &PolicyConfig` and checks its
 version first.
 
-## `seal_policies::nft_gate` (policy)
+## `sealed_storage::nft_gate` (policy)
 
 | Function | Signature | Checks, in order |
 | --- | --- | --- |
@@ -28,7 +28,7 @@ Keys already released stay usable — pausing stops new key releases, not past o
 | 3 | `E_EXHAUSTED` | Single-use pass with zero uses remaining |
 | 4 | `E_GATE_PAUSED` | Gate is paused and its policy has `pause_blocks_decryption` (not in the superseded `0x9f0563…`) |
 
-## `seal_policies::timelock` (policy)
+## `sealed_storage::timelock` (policy)
 
 | Function | Signature | Checks |
 | --- | --- | --- |
@@ -41,7 +41,7 @@ Side-effect free. `Clock` is the system object `0x6`.
 | 1 | `E_BAD_ID` | Identity shorter than 8 bytes |
 | 2 | `E_TOO_EARLY` | Unlock time not yet reached |
 
-## `seal_policies::sealed_content` (registry — not a policy)
+## `sealed_storage::sealed_content` (registry — not a policy)
 
 | Item | Definition |
 | --- | --- |
@@ -56,7 +56,7 @@ Side-effect free. `Clock` is the system object `0x6`.
 | 2 | `E_BLOB_ID_TOO_LONG` | `blob_id` longer than 128 bytes |
 | 3 | `E_SEAL_ID_TOO_LONG` | `seal_id` longer than 256 bytes |
 
-## `seal_policies::config` (version gate — not a policy)
+## `sealed_storage::config` (version gate — not a policy)
 
 | Item | Definition |
 | --- | --- |

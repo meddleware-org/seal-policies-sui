@@ -22,7 +22,7 @@ use_environment = "testnet"
 manifest_digest = "5745706258F61D6CE210904B3E6AE87A73CE9D31A6F93BE4718C442529332A87"
 deps = { std = "MoveStdlib", sui = "Sui" }
 
-[pinned.testnet.seal_policies]
+[pinned.testnet.sealed_storage]
 source = { root = true }
 use_environment = "testnet"
 manifest_digest = "87D4BA84E27FA6007291ED9A1F6C46851D8C2F0648BC5D04492399F3878F4F69"

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # =============================================================================
-# seal_policies — fresh publish
+# sealed_storage — fresh publish
 # =============================================================================
-# Publishes the seal_policies package and records every authority object by its exact type:
+# Publishes the sealed_storage package and records every authority object by its exact type:
 #   - .env.<network>     (gitignored) package, UpgradeCap, PolicyAdminCap and PolicyConfig ids
 #   - deployments.json   (committed)  the shared PolicyConfig id and the custody record (CUSTODY.md)
 #   - Published.toml     (committed)  written by Sui: published-at, original-id, upgrade-capability
@@ -133,7 +133,7 @@ if [ "$NETWORK" != "localnet" ] && grep -qx "\[published.${NETWORK}\]" "$PKG_DIR
   mv "$PKG_DIR/Published.toml.tmp" "$PKG_DIR/Published.toml"
   log "Removed the previous ${NETWORK} entry from Published.toml (backup kept)."
 fi
-log "Publishing seal_policies to ${NETWORK} ..."
+log "Publishing sealed_storage to ${NETWORK} ..."
 if [ "$NETWORK" = "localnet" ]; then
   # The ephemeral publication record stays in the checkout (git-ignored `Pub.*.toml`) so that upgrade.sh and
   # migrate.sh can rehearse against it. It must not exist yet (test-publish creates it): a previous one is kept.
